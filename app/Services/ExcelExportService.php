@@ -586,8 +586,23 @@ class ExcelExportService
 
     private function nombreHoja(Apu $apu, array $usados): string
     {
-        $base = 'APU '.$apu->codigo;
+        $base = 'APU '.($apu->codigo ?: 'SIN CODIGO');
+        $base = substr($base, 0, 31);
 
-        return strlen($base) <= 31 ? $base : substr($base, 0, 31);
+        if (!isset($usados[$base])) {
+            return $base;
+        }
+
+        $n = 2;
+
+        while (true) {
+            $nombre = substr($base, 0, 31 - strlen('-'.$n)).'-'.$n;
+
+            if (!isset($usados[$nombre])) {
+                return $nombre;
+            }
+
+            $n++;
+        }
     }
 }

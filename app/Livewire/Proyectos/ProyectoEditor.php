@@ -122,6 +122,25 @@ class ProyectoEditor extends Component
         ]);
     }
 
+    public function updatedCab(string $valor, string $campo): void
+    {
+        $campos = ['nombre', 'cliente', 'ubicacion', 'estado', 'pct_administracion', 'pct_imprevistos', 'pct_utilidad'];
+
+        if (! in_array($campo, $campos, true)) {
+            return;
+        }
+
+        $this->validateOnly("cab.$campo");
+
+        $valorFinal = match ($campo) {
+            'cliente', 'ubicacion' => $valor ?: null,
+            'pct_administracion', 'pct_imprevistos', 'pct_utilidad' => (float) $valor,
+            default => $valor,
+        };
+
+        $this->proyecto->update([$campo => $valorFinal]);
+    }
+
     public function updatedCantidades(string $valor, string $idLinea): void
     {
         ProyectoApu::query()

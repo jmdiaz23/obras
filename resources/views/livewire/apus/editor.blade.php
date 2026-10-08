@@ -16,18 +16,18 @@
     {{-- Cabecera del APU --}}
     <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <x-form.input label="Código" name="cab.codigo" wire:model.lazy="cab.codigo" wire:change="guardarCabecera" placeholder="APU-001" />
+            <x-form.input label="Código" name="cab.codigo" wire:model.lazy="cab.codigo" placeholder="APU-001" />
             <div class="sm:col-span-2">
                 <label for="cab.descripcion" class="mb-1.5 block text-sm font-medium text-slate-700">
                     Actividad <span class="text-red-500">*</span>
                 </label>
-                <input type="text" id="cab.descripcion" wire:model.lazy="cab.descripcion" wire:change="guardarCabecera"
+                <input type="text" id="cab.descripcion" wire:model.lazy="cab.descripcion"
                        class="block w-full rounded-xl border-slate-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm @error('cab.descripcion') border-red-400 bg-red-50 @enderror">
                 @error('cab.descripcion') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
             <div>
                 <label for="cab.unidad" class="mb-1.5 block text-sm font-medium text-slate-700">Unidad <span class="text-red-500">*</span></label>
-                <select id="cab.unidad" wire:model.lazy="cab.unidad" wire:change="guardarCabecera"
+                <select id="cab.unidad" wire:model.lazy="cab.unidad"
                         class="block w-full rounded-xl border-slate-300 bg-white shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm">
                     @foreach (config('obras.unidades') as $valor => $texto)
                         <option value="{{ $valor }}" @selected($cab['unidad'] === $valor)>{{ $valor }}</option>
@@ -35,21 +35,21 @@
                 </select>
             </div>
             <x-form.input label="% Herramientas menores" name="cab.pct_herramientas" type="number" step="any"
-                          wire:model.lazy="cab.pct_herramientas" wire:change="guardarCabecera"
+                          wire:model.lazy="cab.pct_herramientas"
                           hint="Se aplica sobre el costo de mano de obra." />
-            <x-form.input label="Cuadrilla" name="cab.cuadrilla" wire:model.lazy="cab.cuadrilla" wire:change="guardarCabecera"
+            <x-form.input label="Cuadrilla" name="cab.cuadrilla" wire:model.lazy="cab.cuadrilla"
                           placeholder="O+2A" hint="Ej: 1 oficial + 2 ayudantes." />
             <div>
                 <label for="cab.dias_por_unidad" class="mb-1.5 block text-sm font-medium text-slate-700">Días por unidad</label>
                 <input type="number" step="any" min="0" id="cab.dias_por_unidad"
-                       wire:model.lazy="cab.dias_por_unidad" wire:change="guardarCabecera" placeholder="0.05875"
+                       wire:model.lazy="cab.dias_por_unidad" placeholder="0.05875"
                        class="block w-full rounded-xl border-slate-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm @error('cab.dias_por_unidad') border-red-400 bg-red-50 @enderror">
                 @error('cab.dias_por_unidad') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
                 <p class="mt-1 text-xs text-slate-400">Días que tarda la cuadrilla completa por unidad. Se usa para calcular duraciones en los proyectos.</p>
             </div>
             <div class="lg:col-span-2">
                 <label for="cab.notas" class="mb-1.5 block text-sm font-medium text-slate-700">Notas</label>
-                <input type="text" id="cab.notas" wire:model.lazy="cab.notas" wire:change="guardarCabecera"
+                <input type="text" id="cab.notas" wire:model.lazy="cab.notas"
                        placeholder="Ej: incluye transporte hasta 10 km"
                        class="block w-full rounded-xl border-slate-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm">
             </div>

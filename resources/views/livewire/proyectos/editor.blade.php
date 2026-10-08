@@ -16,12 +16,12 @@
     {{-- Datos generales --}}
     <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <x-form.input label="Nombre del proyecto" name="cab.nombre" wire:model.lazy="cab.nombre" wire:change="guardarDatos" required />
-            <x-form.input label="Cliente" name="cab.cliente" wire:model.lazy="cab.cliente" wire:change="guardarDatos" placeholder="Nombre del cliente" />
-            <x-form.input label="Ubicación" name="cab.ubicacion" wire:model.lazy="cab.ubicacion" wire:change="guardarDatos" placeholder="Ciudad / barrio" />
+            <x-form.input label="Nombre del proyecto" name="cab.nombre" wire:model.lazy="cab.nombre" required />
+            <x-form.input label="Cliente" name="cab.cliente" wire:model.lazy="cab.cliente" placeholder="Nombre del cliente" />
+            <x-form.input label="Ubicación" name="cab.ubicacion" wire:model.lazy="cab.ubicacion" placeholder="Ciudad / barrio" />
             <div>
                 <label for="cab.estado" class="mb-1.5 block text-sm font-medium text-slate-700">Estado</label>
-                <select id="cab.estado" wire:model.lazy="cab.estado" wire:change="guardarDatos"
+                <select id="cab.estado" wire:model.lazy="cab.estado"
                         class="block w-full rounded-xl border-slate-300 bg-white shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm">
                     @foreach ($estados as $valor => $texto)
                         <option value="{{ $valor }}" @selected($cab['estado'] === $valor)>{{ $texto }}</option>
@@ -34,17 +34,17 @@
                 <div class="grid grid-cols-3 gap-3">
                     <label class="block">
                         <span class="mb-1 block text-xs font-medium text-slate-500">Administración %</span>
-                        <input type="number" step="any" min="0" max="100" wire:model.lazy="cab.pct_administracion" wire:change="guardarDatos"
+                        <input type="number" step="any" min="0" max="100" wire:model.lazy="cab.pct_administracion"
                                class="block w-full rounded-xl border-slate-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm">
                     </label>
                     <label class="block">
                         <span class="mb-1 block text-xs font-medium text-slate-500">Imprevistos %</span>
-                        <input type="number" step="any" min="0" max="100" wire:model.lazy="cab.pct_imprevistos" wire:change="guardarDatos"
+                        <input type="number" step="any" min="0" max="100" wire:model.lazy="cab.pct_imprevistos"
                                class="block w-full rounded-xl border-slate-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm">
                     </label>
                     <label class="block">
                         <span class="mb-1 block text-xs font-medium text-slate-500">Utilidad %</span>
-                        <input type="number" step="any" min="0" max="100" wire:model.lazy="cab.pct_utilidad" wire:change="guardarDatos"
+                        <input type="number" step="any" min="0" max="100" wire:model.lazy="cab.pct_utilidad"
                                class="block w-full rounded-xl border-slate-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm">
                     </label>
                 </div>
@@ -59,9 +59,34 @@
             <div class="flex items-center gap-3">
                 <span class="text-xs text-slate-500">Vr. unitario = costo directo del APU · el AIU se aplica sobre el subtotal</span>
                 <a href="{{ route('proyectos.exportar', $proyecto->id) }}"
+                   x-data="{ descargando: false }"
+                   @click.prevent="
+                       descargando = true;
+                       const enlace = $el;
+                       fetch(enlace.href, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                           .then((res) => {
+                               if (!res.ok) throw new Error('el servidor respondió ' + res.status);
+                               const cd = res.headers.get('Content-Disposition') || '';
+                               const match = cd.match(/filename=\"([^\"]+)\"/);
+                               return res.blob().then((blob) => ({ blob, nombre: match ? match[1] : 'PRESUPUESTO.xlsx' }));
+                           })
+                           .then(({ blob, nombre }) => {
+                               const url = URL.createObjectURL(blob);
+                               const temp = document.createElement('a');
+                               temp.href = url;
+                               temp.download = nombre;
+                               document.body.appendChild(temp);
+                               temp.click();
+                               temp.remove();
+                               URL.revokeObjectURL(url);
+                           })
+                           .catch((error) => alert('No se pudo descargar: ' + error.message))
+                           .finally(() => { descargando = false; });
+                   "
                    class="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
-                    Exportar Excel
+                    <span x-show="!descargando">Exportar Excel</span>
+                    <span x-show="descargando" x-cloak>Generando...</span>
                 </a>
             </div>
         </div>

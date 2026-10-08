@@ -130,6 +130,26 @@ class ApuEditor extends Component
         ]);
     }
 
+    public function updatedCab(string $valor, string $campo): void
+    {
+        $campos = ['codigo', 'descripcion', 'unidad', 'cuadrilla', 'dias_por_unidad', 'pct_herramientas', 'notas'];
+
+        if (! in_array($campo, $campos, true)) {
+            return;
+        }
+
+        $this->validateOnly("cab.$campo");
+
+        $valorFinal = match ($campo) {
+            'codigo', 'cuadrilla', 'notas' => $valor ?: null,
+            'dias_por_unidad' => $valor !== '' ? (float) $valor : null,
+            'pct_herramientas' => (float) $valor,
+            default => $valor,
+        };
+
+        $this->apu->update([$campo => $valorFinal]);
+    }
+
     public function updatedLinM(string $valor, string $ruta): void
     {
         [$id, $campo] = explode('.', $ruta);
