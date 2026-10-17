@@ -15,3 +15,13 @@
         display: none !important;
     }
 }
+
+@layer components {
+    .campo {
+        @apply block w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none sm:text-sm;
+    }
+
+    .campo-error {
+        @apply border-red-400 bg-red-50;
+    }
+}

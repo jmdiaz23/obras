@@ -6,7 +6,7 @@
         <div>
             <label for="nombre_empresa" class="mb-1.5 block text-sm font-medium text-slate-700">Nombre de la empresa</label>
             <input id="nombre_empresa" type="text" wire:model="nombre_empresa" required autofocus
-                   class="block w-full rounded-xl border-slate-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm @error('nombre_empresa') border-red-400 @enderror"
+                   class="campo @error('nombre_empresa') border-red-400 @enderror"
                    placeholder="Constructora El Ejemplo S.A.S.">
             @error('nombre_empresa') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
         </div>
@@ -14,7 +14,7 @@
         <div>
             <label for="nit" class="mb-1.5 block text-sm font-medium text-slate-700">NIT <span class="font-normal text-slate-400">(opcional)</span></label>
             <input id="nit" type="text" wire:model="nit"
-                   class="block w-full rounded-xl border-slate-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm @error('nit') border-red-400 @enderror"
+                   class="campo @error('nit') border-red-400 @enderror"
                    placeholder="900.123.456-7">
             @error('nit') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
         </div>
@@ -22,7 +22,7 @@
         <div>
             <label for="name" class="mb-1.5 block text-sm font-medium text-slate-700">Tu nombre</label>
             <input id="name" type="text" wire:model="name" autocomplete="name" required
-                   class="block w-full rounded-xl border-slate-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm @error('name') border-red-400 @enderror"
+                   class="campo @error('name') border-red-400 @enderror"
                    placeholder="Juan Pérez">
             @error('name') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
         </div>
@@ -30,7 +30,7 @@
         <div>
             <label for="email" class="mb-1.5 block text-sm font-medium text-slate-700">Correo electrónico</label>
             <input id="email" type="email" wire:model="email" autocomplete="email" required
-                   class="block w-full rounded-xl border-slate-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm @error('email') border-red-400 @enderror"
+                   class="campo @error('email') border-red-400 @enderror"
                    placeholder="tu@empresa.com">
             @error('email') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
         </div>
@@ -39,13 +39,13 @@
             <div>
                 <label for="password" class="mb-1.5 block text-sm font-medium text-slate-700">Contraseña</label>
                 <input id="password" type="password" wire:model="password" autocomplete="new-password" required
-                       class="block w-full rounded-xl border-slate-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm @error('password') border-red-400 @enderror">
+                       class="campo @error('password') border-red-400 @enderror">
                 @error('password') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
             <div>
                 <label for="password_confirmation" class="mb-1.5 block text-sm font-medium text-slate-700">Confirmar</label>
                 <input id="password_confirmation" type="password" wire:model="password_confirmation" autocomplete="new-password" required
-                       class="block w-full rounded-xl border-slate-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm">
+                       class="campo">
             </div>
         </div>
 

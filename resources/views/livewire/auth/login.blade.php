@@ -6,7 +6,7 @@
         <div>
             <label for="email" class="mb-1.5 block text-sm font-medium text-slate-700">Correo electrónico</label>
             <input id="email" type="email" wire:model="email" autocomplete="email" required autofocus
-                   class="block w-full rounded-xl border-slate-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm
+                   class="campo
                           @error('email') border-red-400 @enderror"
                    placeholder="tu@empresa.com">
             @error('email') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
@@ -17,7 +17,7 @@
                 <label for="password" class="block text-sm font-medium text-slate-700">Contraseña</label>
             </div>
             <input id="password" type="password" wire:model="password" autocomplete="current-password" required
-                   class="block w-full rounded-xl border-slate-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm
+                   class="campo
                           @error('password') border-red-400 @enderror"
                    placeholder="••••••••">
             @error('password') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror

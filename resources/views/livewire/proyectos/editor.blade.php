@@ -22,7 +22,7 @@
             <div>
                 <label for="cab.estado" class="mb-1.5 block text-sm font-medium text-slate-700">Estado</label>
                 <select id="cab.estado" wire:model.lazy="cab.estado"
-                        class="block w-full rounded-xl border-slate-300 bg-white shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm">
+                        class="campo">
                     @foreach ($estados as $valor => $texto)
                         <option value="{{ $valor }}" @selected($cab['estado'] === $valor)>{{ $texto }}</option>
                     @endforeach
@@ -35,17 +35,17 @@
                     <label class="block">
                         <span class="mb-1 block text-xs font-medium text-slate-500">Administración %</span>
                         <input type="number" step="any" min="0" max="100" wire:model.lazy="cab.pct_administracion"
-                               class="block w-full rounded-xl border-slate-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm">
+                               class="campo">
                     </label>
                     <label class="block">
                         <span class="mb-1 block text-xs font-medium text-slate-500">Imprevistos %</span>
                         <input type="number" step="any" min="0" max="100" wire:model.lazy="cab.pct_imprevistos"
-                               class="block w-full rounded-xl border-slate-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm">
+                               class="campo">
                     </label>
                     <label class="block">
                         <span class="mb-1 block text-xs font-medium text-slate-500">Utilidad %</span>
                         <input type="number" step="any" min="0" max="100" wire:model.lazy="cab.pct_utilidad"
-                               class="block w-full rounded-xl border-slate-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm">
+                               class="campo">
                     </label>
                 </div>
             </div>
@@ -60,29 +60,7 @@
                 <span class="text-xs text-slate-500">Vr. unitario = costo directo del APU · el AIU se aplica sobre el subtotal</span>
                 <a href="{{ route('proyectos.exportar', $proyecto->id) }}"
                    x-data="{ descargando: false }"
-                   @click.prevent="
-                       descargando = true;
-                       const enlace = $el;
-                       fetch(enlace.href, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-                           .then((res) => {
-                               if (!res.ok) throw new Error('el servidor respondió ' + res.status);
-                               const cd = res.headers.get('Content-Disposition') || '';
-                               const match = cd.match(/filename=\"([^\"]+)\"/);
-                               return res.blob().then((blob) => ({ blob, nombre: match ? match[1] : 'PRESUPUESTO.xlsx' }));
-                           })
-                           .then(({ blob, nombre }) => {
-                               const url = URL.createObjectURL(blob);
-                               const temp = document.createElement('a');
-                               temp.href = url;
-                               temp.download = nombre;
-                               document.body.appendChild(temp);
-                               temp.click();
-                               temp.remove();
-                               URL.revokeObjectURL(url);
-                           })
-                           .catch((error) => alert('No se pudo descargar: ' + error.message))
-                           .finally(() => { descargando = false; });
-                   "
+                   @click.prevent="descargando = true; window.descargarExcel($el).finally(function () { descargando = false })"
                    class="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
                     <span x-show="!descargando">Exportar Excel</span>
@@ -124,7 +102,7 @@
                                 <td class="px-3 py-2.5 text-slate-500">{{ $linea['unidad'] }}</td>
                                 <td class="px-3 py-2.5">
                                     <input type="number" step="any" min="0" wire:model.live="cantidades.{{ $linea['id'] }}"
-                                           class="w-full rounded-lg border-slate-200 text-right text-sm shadow-sm focus:border-amber-500 focus:ring-amber-500">
+                                           class="campo px-3 py-2 text-right">
                                 </td>
                                 <td class="px-3 py-2.5 text-right font-mono text-slate-500">{{ number_format((float) $linea['vr_unitario'], 2, ',', '.') }}</td>
                                 <td class="px-3 py-2.5 text-right font-mono font-semibold text-slate-900">{{ number_format((float) $linea['vr_total'], 2, ',', '.') }}</td>
@@ -154,7 +132,7 @@
                 <div class="min-w-[240px] flex-1">
                     <label for="sel-apu" class="mb-1 block text-xs font-semibold text-slate-500">Agregar APU como ítem</label>
                     <select id="sel-apu" wire:model="selApu"
-                            class="block w-full rounded-xl border-slate-300 bg-white text-sm shadow-sm focus:border-amber-500 focus:ring-amber-500">
+                            class="campo">
                         <option value="">Selecciona un APU...</option>
                         @foreach ($apusDisponibles as $apuItem)
                             <option value="{{ $apuItem->id }}">{{ $apuItem->codigo ?? '—' }} — {{ Str::limit($apuItem->descripcion, 55) }} ({{ $apuItem->unidad }})</option>
@@ -176,13 +154,13 @@
                     <div class="w-24">
                         <label for="capitulo.item" class="mb-1 block text-xs font-semibold text-slate-600">Nº capítulo</label>
                         <input id="capitulo.item" type="text" wire:model="capitulo.item"
-                               class="block w-full rounded-xl border-slate-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm">
+                               class="campo">
                         @error('capitulo.item') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
                     <div class="min-w-[220px] flex-1">
                         <label for="capitulo.titulo" class="mb-1 block text-xs font-semibold text-slate-600">Título</label>
                         <input id="capitulo.titulo" type="text" wire:model="capitulo.titulo" placeholder="OBRAS PRELIMINARES"
-                               class="block w-full rounded-xl border-slate-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm">
+                               class="campo">
                         @error('capitulo.titulo') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
                     <button type="submit" class="rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-amber-500/30 transition hover:bg-amber-600">Guardar capítulo</button>

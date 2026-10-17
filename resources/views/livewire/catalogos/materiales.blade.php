@@ -22,7 +22,7 @@
     <div class="relative max-w-md">
         <svg class="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
         <input type="search" wire:model.live.debounce.400ms="buscar" placeholder="Buscar por código o descripción..."
-               class="block w-full rounded-xl border-slate-300 pl-10 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm">
+               class="campo pl-10">
     </div>
 
     {{-- Tabla escritorio --}}
@@ -109,7 +109,7 @@
                 <div>
                     <label for="form.unidad" class="mb-1.5 block text-sm font-medium text-slate-700">Unidad <span class="text-red-500">*</span></label>
                     <select id="form.unidad" wire:model="form.unidad"
-                            class="block w-full rounded-xl border-slate-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm">
+                            class="campo">
                         @foreach (config('obras.unidades') as $clave => $texto)
                             <option value="{{ $clave }}">{{ $texto }}</option>
                         @endforeach
@@ -121,7 +121,7 @@
             <div>
                 <label for="form.proveedor_id" class="mb-1.5 block text-sm font-medium text-slate-700">Proveedor</label>
                 <select id="form.proveedor_id" wire:model="form.proveedor_id"
-                        class="block w-full rounded-xl border-slate-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm">
+                        class="campo">
                     <option value="">— Sin proveedor —</option>
                     @foreach (\App\Models\Proveedor::orderBy('nombre')->get(['id', 'nombre']) as $prov)
                         <option value="{{ $prov->id }}">{{ $prov->nombre }}</option>

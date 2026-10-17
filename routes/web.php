@@ -11,6 +11,12 @@ use App\Livewire\Catalogos\Materiales;
 use App\Livewire\Catalogos\Proveedores;
 use App\Livewire\Proyectos\ProyectoEditor;
 use App\Livewire\Proyectos\Proyectos;
+use App\Models\Apu;
+use App\Models\CargoMo;
+use App\Models\Equipo;
+use App\Models\Material;
+use App\Models\Proveedor;
+use App\Models\Proyecto;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -25,7 +31,18 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::get('/dashboard', function () {
-    return view('dashboard');
+    return view('dashboard', [
+        'kpis' => [
+            'Proyectos' => Proyecto::query()->count(),
+            'APUs' => Apu::query()->count(),
+            'Materiales' => Material::query()->count(),
+            'Equipos' => Equipo::query()->count(),
+            'Mano de obra' => CargoMo::query()->count(),
+            'Proveedores' => Proveedor::query()->count(),
+        ],
+        'proyectosRecientes' => Proyecto::query()->latest()->take(5)->get(),
+        'estados' => Proyecto::ESTADOS,
+    ]);
 })->middleware('auth')->name('dashboard');
 
 Route::middleware('auth')->prefix('catalogos')->name('catalogos.')->group(function () {
