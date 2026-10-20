@@ -1,0 +1,99 @@
+name: obraos
+
+# -----------------------------------------------------------------------------
+# NOTA IMPORTANTE
+# -----------------------------------------------------------------------------
+# Docker Compose lee automáticamente el archivo .env de Laravel para interpolar
+# variables. Para no chocar con tus credenciales locales (DB_USERNAME=root,
+# DB_DATABASE=obras, etc.), todas las variables de este compose usan el prefijo
+# OBRAOS_. Puedes sobreescribirlas desde la terminal o creando un archivo .env
+# con esos nombres, por ejemplo:
+#
+#   OBRAOS_APP_PORT=8090
+#   OBRAOS_DB_PORT=3307
+#   OBRAOS_DB_DATABASE=obras
+#   OBRAOS_DB_USERNAME=obras
+#   OBRAOS_DB_PASSWORD=secret
+#   OBRAOS_SEED_DEMO=true
+#
+# -----------------------------------------------------------------------------
+
+services:
+  # ---------------------------------------------------------------------------
+  # PHP-FPM (Laravel)
+  # ---------------------------------------------------------------------------
+  app:
+    build:
+      context: .
+      target: app
+    restart: unless-stopped
+    environment:
+      APP_NAME: ObraOS
+      APP_ENV: ${OBRAOS_APP_ENV:-local}
+      APP_DEBUG: ${OBRAOS_APP_DEBUG:-true}
+      APP_URL: http://localhost:${OBRAOS_APP_PORT:-8090}
+      APP_LOCALE: es
+      APP_FALLBACK_LOCALE: es
+      APP_FAKER_LOCALE: es_CO
+      LOG_CHANNEL: stack
+      LOG_LEVEL: ${OBRAOS_LOG_LEVEL:-debug}
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: ${OBRAOS_DB_DATABASE:-obras}
+      DB_USERNAME: ${OBRAOS_DB_USERNAME:-obras}
+      DB_PASSWORD: ${OBRAOS_DB_PASSWORD:-secret}
+      SESSION_DRIVER: database
+      SESSION_LIFETIME: 120
+      CACHE_STORE: database
+      QUEUE_CONNECTION: database
+      BROADCAST_CONNECTION: log
+      MAIL_MAILER: log
+      # Ponlo en "true" la primera vez para cargar el usuario y datos demo.
+      SEED_DEMO: ${OBRAOS_SEED_DEMO:-false}
+    volumes:
+      - storage:/var/www/html/storage
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------------------
+  # Nginx (servidor web)
+  # ---------------------------------------------------------------------------
+  web:
+    build:
+      context: .
+      target: web
+    restart: unless-stopped
+    ports:
+      # 8090 está libre en esta máquina (80, 8000 y 8080 están ocupados).
+      - "${OBRAOS_APP_PORT:-8090}:80"
+    depends_on:
+      - app
+
+  # ---------------------------------------------------------------------------
+  # MySQL
+  # ---------------------------------------------------------------------------
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${OBRAOS_DB_DATABASE:-obras}
+      MYSQL_USER: ${OBRAOS_DB_USERNAME:-obras}
+      MYSQL_PASSWORD: ${OBRAOS_DB_PASSWORD:-secret}
+      MYSQL_ROOT_PASSWORD: ${OBRAOS_DB_ROOT_PASSWORD:-root}
+    ports:
+      # 3307 en el host (el 3306 lo usa tu MySQL local).
+      - "${OBRAOS_DB_PORT:-3307}:3306"
+    volumes:
+      - dbdata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+volumes:
+  dbdata:
+  storage:

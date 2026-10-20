@@ -6,6 +6,19 @@ El sistema reproduce las fórmulas de la hoja de cálculo tradicional de presupu
 
 ---
 
+## 🌿 Rama de trabajo
+
+> **Importante:** la rama `main` está estable y funcionando. **No se toca ni se mezcla.**
+> Todo el trabajo de Docker y documentación vive únicamente en la rama **`feature/docker`**, que se mantiene separada de `main`.
+
+```bash
+git checkout feature/docker
+```
+
+Esta rama se sube a `origin` para que el equipo la pruebe, pero **no se fusiona con `main`**. Si en el futuro se decide integrar, se hará de forma explícita y revisada.
+
+---
+
 ## ✨ Funcionalidades
 
 - **Autenticación y registro por empresa**: cada empresa crea su cuenta y sus catálogos quedan aislados del resto.
@@ -42,6 +55,106 @@ El sistema reproduce las fórmulas de la hoja de cálculo tradicional de presupu
 - Node.js 18+ y npm
 - MySQL 8 (recomendado) o SQLite
 - Opcional: [Laragon](https://laragon.org/) para levantar el entorno en Windows.
+
+> ¿Solo quieres probar la aplicación? Salta a [Ejecutar con Docker](#-ejecutar-con-docker-recomendado) y olvídate de instalar PHP, Composer, Node y MySQL.
+
+---
+
+## 🐳 Ejecutar con Docker (recomendado)
+
+Es la forma más rápida de correr ObraOS y funciona igual en **Windows, macOS y Linux**. No necesitas PHP, Composer, Node ni MySQL en tu máquina: todo se construye dentro de los contenedores.
+
+### Requisitos
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) en Windows/macOS, o Docker Engine + Compose en Linux.
+
+### 1. Clonar y levantar
+
+```bash
+git clone https://github.com/jmdiaz23/obras.git obras
+cd obras
+git checkout feature/docker
+docker compose up -d --build
+```
+
+La primera vez tarda unos minutos (descarga imágenes, instala dependencias y compila los assets). El contenedor `app` espera a que MySQL esté listo, genera el `APP_KEY` y ejecuta las migraciones automáticamente.
+
+### 2. Abrir la aplicación
+
+👉 **http://localhost:8090**
+
+### 3. Cargar los datos de demostración (opcional)
+
+```bash
+# Opción A: al levantar por primera vez
+OBRAOS_SEED_DEMO=true docker compose up -d --build
+
+# En PowerShell:
+$env:OBRAOS_SEED_DEMO="true"; docker compose up -d --build
+
+# Opción B: con la aplicación ya corriendo
+docker compose exec app php artisan db:seed --class=DemoObraSeeder
+```
+
+Después inicia sesión con `jesu@obras.com` / `password123`.
+
+### Puertos
+
+Se eligieron puertos distintos a los habituales para no chocar con otros proyectos locales (80, 3306, 8000 y 8080 suelen estar ocupados):
+
+| Servicio | Host | Contenedor | Cómo cambiarlo |
+| --- | --- | --- | --- |
+| Aplicación web | `8090` | `80` | `OBRAOS_APP_PORT=9000 docker compose up -d` |
+| MySQL | `3307` | `3306` | `OBRAOS_DB_PORT=3310 docker compose up -d` |
+
+Credenciales de MySQL: base `obras`, usuario `obras`, contraseña `secret`, root `root`. Desde el host se accede en `127.0.0.1:3307`.
+
+### Comandos útiles
+
+```bash
+docker compose ps                       # estado de los servicios
+docker compose logs -f app              # logs de Laravel / PHP
+docker compose logs -f web              # logs de Nginx
+docker compose exec app php artisan migrate
+docker compose exec app php artisan tinker
+docker compose exec db mysql -uobras -psecret obras
+docker compose restart app              # reiniciar PHP
+docker compose down                     # detener (conserva los datos)
+docker compose down -v                  # detener y borrar la base de datos
+```
+
+### Recompilar tras cambios
+
+La imagen no monta el código (es inmutable), así que después de cambiar PHP, CSS o JS:
+
+```bash
+docker compose up -d --build
+```
+
+### Variables de entorno
+
+El compose usa el prefijo `OBRAOS_` para no chocar con el `.env` local de Laravel:
+
+| Variable | Por defecto | Descripción |
+| --- | --- | --- |
+| `OBRAOS_APP_PORT` | `8090` | Puerto web en el host |
+| `OBRAOS_DB_PORT` | `3307` | Puerto de MySQL en el host |
+| `OBRAOS_DB_DATABASE` | `obras` | Nombre de la base de datos |
+| `OBRAOS_DB_USERNAME` | `obras` | Usuario de la base de datos |
+| `OBRAOS_DB_PASSWORD` | `secret` | Contraseña de la base de datos |
+| `OBRAOS_DB_ROOT_PASSWORD` | `root` | Contraseña de root |
+| `OBRAOS_SEED_DEMO` | `false` | Carga los datos demo al iniciar |
+| `OBRAOS_APP_ENV` | `local` | Entorno de Laravel |
+| `OBRAOS_APP_DEBUG` | `true` | Modo depuración |
+
+### Solución de problemas
+
+- **`port is already allocated`**: cambia `OBRAOS_APP_PORT` o `OBRAOS_DB_PORT`.
+- **MySQL reiniciándose**: revisa `docker compose logs db`. Si cambiaste credenciales después del primer arranque, ejecuta `docker compose down -v` para reinicializar la base.
+- **Los cambios no aparecen**: reconstruye con `docker compose up -d --build`.
+- **Error de permisos en `storage`**: `docker compose exec app chown -R www-data:www-data storage bootstrap/cache`.
+
+> El `docker-compose.yml` está pensado para desarrollo y demostración. Para producción revisa la sección [Despliegue](#-despliegue).
 
 ---
 
@@ -116,6 +229,26 @@ Si ejecutaste `DemoObraSeeder`:
 | Rol | `propietario` |
 
 También puedes **registrarte** desde `/registro` para crear una empresa nueva desde cero.
+
+---
+
+## 📸 Capturas
+
+> Guarda las imágenes en `docs/screenshots/` y descomenta las líneas de abajo para mostrarlas en este README.
+
+| Pantalla | Archivo sugerido |
+| --- | --- |
+| Inicio de sesión | `docs/screenshots/login.png` |
+| Dashboard | `docs/screenshots/dashboard.png` |
+| Editor de presupuesto | `docs/screenshots/presupuesto.png` |
+| Exportación a Excel | `docs/screenshots/excel.png` |
+
+<!--
+![Inicio de sesión](docs/screenshots/login.png)
+![Dashboard](docs/screenshots/dashboard.png)
+![Editor de presupuesto](docs/screenshots/presupuesto.png)
+![Exportación a Excel](docs/screenshots/excel.png)
+-->
 
 ---
 
@@ -210,6 +343,14 @@ resources/
     ├── dashboard.blade.php
     ├── components/                          # Layout, formularios y modales
     └── livewire/                            # Vistas de cada componente
+
+docker/
+├── entrypoint.sh                            # Espera MySQL, genera key y migra
+├── nginx/default.conf                       # Configuración de Nginx
+└── php/php.ini                              # Límites de PHP y OPcache
+
+Dockerfile                                   # Build multi-stage (assets, vendor, app, web)
+docker-compose.yml                           # Servicios app + web + db
 ```
 
 ---
@@ -220,6 +361,47 @@ resources/
 - Órdenes de compra y control de ejecución.
 - Reportes de avance y comparativos presupuesto vs. real.
 - Importación/exportación masiva de catálogos.
+
+---
+
+## 🚢 Despliegue
+
+### Docker Compose en un servidor
+
+El `docker-compose.yml` incluido sirve para demo y desarrollo. Para un servidor:
+
+1. Clona la rama `feature/docker` (o el resultado de una integración explícita y revisada).
+2. Crea un archivo `.env` junto al compose con valores seguros (no uses los valores por defecto):
+
+```dotenv
+OBRAOS_APP_ENV=production
+OBRAOS_APP_DEBUG=false
+OBRAOS_APP_PORT=80
+OBRAOS_DB_PASSWORD=<contraseña-fuerte>
+OBRAOS_DB_ROOT_PASSWORD=<contraseña-fuerte>
+OBRAOS_SEED_DEMO=false
+```
+
+3. Levanta los servicios:
+
+```bash
+docker compose up -d --build
+```
+
+4. Coloca un proxy inverso con HTTPS (Nginx, Caddy o Traefik) delante del puerto de la aplicación.
+
+### Checklist de producción
+
+- [ ] `APP_ENV=production` y `APP_DEBUG=false`.
+- [ ] Contraseñas fuertes y respaldos de la base (`docker compose exec db mysqldump -uobras -p obras > respaldo.sql`).
+- [ ] HTTPS obligatorio.
+- [ ] `APP_URL` con el dominio real.
+- [ ] Correo real (`MAIL_MAILER=smtp` en lugar de `log`).
+- [ ] Volúmenes `dbdata` y `storage` respaldados.
+
+### Hosting administrado
+
+También funciona en cualquier hosting con PHP 8.2+, MySQL y Node para compilar los assets (ver [Instalación](#-instalación)).
 
 ---
 

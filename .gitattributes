@@ -6,6 +6,13 @@
 *.md diff=markdown
 *.php diff=php
 
+# Los scripts de shell y archivos de Docker deben usar LF (Linux/macOS/Docker)
+*.sh text eol=lf
+Dockerfile text eol=lf
+docker-compose.yml text eol=lf
+docker/**/*.conf text eol=lf
+.env.docker.example text eol=lf
+
 /.github export-ignore
 CHANGELOG.md export-ignore
 .styleci.yml export-ignore
