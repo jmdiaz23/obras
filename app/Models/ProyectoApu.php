@@ -15,6 +15,7 @@ class ProyectoApu extends Model
         'proyecto_id',
         'apu_id',
         'item',
+        'titulo',
         'es_capitulo',
         'cantidad',
         'orden',

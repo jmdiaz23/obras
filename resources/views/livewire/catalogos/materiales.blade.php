@@ -12,11 +12,17 @@
             <h2 class="text-lg font-bold text-slate-900">Lista de precios · Materiales</h2>
             <p class="text-sm text-slate-500">Insumos que alimentarán los APU de tus presupuestos.</p>
         </div>
-        <button wire:click="crear"
-                class="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 transition hover:bg-slate-800 active:scale-[0.98]">
-            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-            Nuevo material
-        </button>
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <x-importar-excel modulo="materiales"
+                :mostrar="$mostrarImport"
+                :resultado="$resultadoImport"
+                :importando="$importando" />
+            <button wire:click="crear"
+                    class="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 transition hover:bg-slate-800 active:scale-[0.98]">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                Nuevo material
+            </button>
+        </div>
     </div>
 
     <div class="relative max-w-md">

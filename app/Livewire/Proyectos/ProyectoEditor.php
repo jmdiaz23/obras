@@ -175,6 +175,7 @@ class ProyectoEditor extends Component
             'proyecto_id' => $this->proyecto->id,
             'apu_id' => null,
             'item' => $datos['item'],
+            'titulo' => $datos['titulo'],
             'es_capitulo' => true,
             'cantidad' => null,
             'orden' => ProyectoApu::where('proyecto_id', $this->proyecto->id)->max('orden') + 1,

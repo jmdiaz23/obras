@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Catalogos;
 
+use App\Livewire\Catalogos\Concerns\ImportaExcel;
 use App\Models\CargoMo;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -15,6 +16,7 @@ use Livewire\WithPagination;
 #[Title('Mano de obra')]
 class CargosMo extends Component
 {
+    use ImportaExcel;
     use WithPagination;
 
     public string $buscar = '';
@@ -139,6 +141,11 @@ class CargosMo extends Component
             'jornal' => '',
             'descripcion' => '',
         ];
+    }
+
+    protected function moduloImportacion(): string
+    {
+        return 'cargos_mo';
     }
 
     public function render()

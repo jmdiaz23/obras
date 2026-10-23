@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Catalogos;
 
+use App\Livewire\Catalogos\Concerns\ImportaExcel;
 use App\Models\Proveedor;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -15,6 +16,7 @@ use Livewire\WithPagination;
 #[Title('Proveedores')]
 class Proveedores extends Component
 {
+    use ImportaExcel;
     use WithPagination;
 
     public string $buscar = '';
@@ -139,6 +141,11 @@ class Proveedores extends Component
             'email' => '',
             'notas' => '',
         ];
+    }
+
+    protected function moduloImportacion(): string
+    {
+        return 'proveedores';
     }
 
     public function render()

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Catalogos;
 
+use App\Livewire\Catalogos\Concerns\ImportaExcel;
 use App\Models\Equipo;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -15,6 +16,7 @@ use Livewire\WithPagination;
 #[Title('Equipos')]
 class Equipos extends Component
 {
+    use ImportaExcel;
     use WithPagination;
 
     public string $buscar = '';
@@ -145,6 +147,11 @@ class Equipos extends Component
             'tarifa_dia' => '',
             'proveedor_id' => null,
         ];
+    }
+
+    protected function moduloImportacion(): string
+    {
+        return 'equipos';
     }
 
     public function render()

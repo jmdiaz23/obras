@@ -28,7 +28,7 @@ class PresupuestoService
                 $lineas->push([
                     'id' => $fila->id,
                     'item' => $fila->item,
-                    'descripcion' => $fila->apu?->descripcion ?? ($fila->es_capitulo ? '' : '[APU eliminado]'),
+                    'descripcion' => $fila->titulo ?: ($fila->apu?->descripcion ?? ($fila->es_capitulo ? '' : '[APU eliminado]')),
                     'es_capitulo' => true,
                     'unidad' => '',
                     'cantidad' => null,

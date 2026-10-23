@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ExportController;
+use App\Http\Controllers\PlantillaController;
 use App\Livewire\Apus\ApuEditor;
 use App\Livewire\Apus\Apus;
 use App\Livewire\Auth\Login;
@@ -50,6 +51,7 @@ Route::middleware('auth')->prefix('catalogos')->name('catalogos.')->group(functi
     Route::get('/materiales', Materiales::class)->name('materiales');
     Route::get('/equipos', Equipos::class)->name('equipos');
     Route::get('/mano-de-obra', CargosMo::class)->name('mano-de-obra');
+    Route::get('/plantilla/{modulo}', [PlantillaController::class, 'descargar'])->name('plantilla');
 });
 
 Route::middleware('auth')->prefix('apus')->name('apus.')->group(function () {

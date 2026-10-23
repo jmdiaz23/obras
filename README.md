@@ -28,6 +28,7 @@ Esta rama se sube a `origin` para que el equipo la pruebe, pero **no se fusiona 
   - Materiales (con precio por unidad y proveedor)
   - Equipos (alquiler, tipo)
   - Mano de obra (cargos, jornal, prestaciones)
+- **Importación masiva desde Excel**: carga o actualiza cualquiera de los 4 catálogos desde `.xlsx`, `.xls` o `.csv`, con plantilla descargable y reporte de creados, actualizados y errores por fila.
 - **APUs (Análisis de Precios Unitarios)**: composición de un precio unitario a partir de materiales, mano de obra y equipos, con rendimiento y desperdicio.
 - **Proyectos / Presupuestos**: editor con capítulos e ítems, cantidades, duración y cálculo automático de AIU.
 - **Exportación a Excel** (`.xlsx`) con múltiples hojas: `LISTA DE PRECIOS`, `ALQUILER DE EQUIPOS`, `RENDIMIENTO`, una hoja por APU, `MEMORIA DE CALCULO`, `PRESUPUESTO GENERAL`, `TABLA DE TAREAS` y `EJE UNIVERSAL`.
@@ -97,6 +98,12 @@ docker compose exec app php artisan db:seed --class=DemoObraSeeder
 ```
 
 Después inicia sesión con `jesu@obras.com` / `password123`.
+
+El seeder es idempotente: se puede volver a ejecutar sin duplicar ni borrar datos. Carga:
+
+- 3 proveedores, 47 materiales, 6 equipos y 2 cargos de mano de obra.
+- 3 APUs: concreto 3000 psi (`APU-001`, $348.671,72/m³), muro de bloque (`APU-002`) y piso cerámico (`APU-003`).
+- Proyecto **Casa lote 12, Altos de la Sabana** (Barranquilla), con capítulos *Obra gruesa* y *Acabados*, AIU 10/5/10, subtotal **$57.491.848,24** y total **$71.864.810,29**.
 
 ### Puertos
 
@@ -263,6 +270,7 @@ También puedes **registrarte** desde `/registro` para crear una empresa nueva d
 | `/catalogos/materiales` | Catálogo de materiales |
 | `/catalogos/equipos` | Catálogo de equipos |
 | `/catalogos/mano-de-obra` | Catálogo de mano de obra |
+| `/catalogos/plantilla/{modulo}` | Descarga la plantilla Excel de importación |
 | `/apus` | Listado de APUs |
 | `/apus/{apu}/editar` | Editor de un APU |
 | `/proyectos` | Listado de proyectos |
@@ -288,6 +296,98 @@ TOTAL          = subtotal + administración + imprevistos + utilidad
 ```
 
 Los porcentajes de AIU se toman por proyecto (con los valores por defecto de la empresa). El costo de mano de obra incluye prestaciones según `pct_prestaciones` de la empresa (`app/Services/ApuCalculator.php`).
+
+---
+
+## 🧩 Cómo se construye un APU
+
+Un **APU (Análisis de Precios Unitarios)** responde una sola pregunta: *¿cuánto cuesta producir **una** unidad de esta actividad?* No incluye AIU; el AIU se aplica después, a nivel de presupuesto.
+
+### 1. Definir la actividad
+
+- **Descripción**: `CONCRETO DE 3000 PSI EN ZAPATAS`
+- **Unidad**: `M3`
+- **Cuadrilla y rendimiento**: quiénes trabajan y en cuánto tiempo hacen 1 unidad (`días_por_unidad`, `cuadrilla`).
+
+### 2. Materiales (A)
+
+Por cada insumo:
+
+```
+total = cantidad_por_unidad × (1 + desperdicio%) × precio_unitario
+```
+
+El desperdicio se maneja por línea (ej. 5 % en cemento, 10 % en arena).
+
+### 3. Mano de obra (B)
+
+```
+jornal_con_prestaciones = jornal × (1 + pct_prestaciones / 100)
+total                   = jornal_con_prestaciones × días_por_unidad
+```
+
+Las prestaciones salen del porcentaje configurado en la empresa (ej. 85 %), no se digitan por APU.
+
+### 4. Equipos (C)
+
+```
+tarifa_hora = tarifa_día / 8
+total       = tarifa_hora × horas_por_unidad
+```
+
+Además, las **herramientas menores** se calculan como un porcentaje de la mano de obra (10 % por defecto):
+
+```
+herramientas = total_mano_obra × pct_herramientas / 100
+```
+
+### 5. Costo directo
+
+```
+COSTO DIRECTO = A + B + C (equipos + herramientas)
+```
+
+### Ejemplo real (hoja del ingeniero)
+
+`CONCRETO DE 3000 PSI EN ZAPATAS` — 1 M3:
+
+| Componente | Detalle | Total |
+| --- | --- | ---: |
+| A. Materiales | Cemento 350 KG × 530 · Agua 0,18 M3 × 1.840 · Grueso 0,84 M3 × 82.048 · Fino 0,56 M3 × 64.191 | 290.698,48 |
+| B. Mano de obra | Ayudante: 30.284 × 1,85 × 0,89 | 49.862,61 |
+| C. Equipos | Herramientas 10 % de la MO (4.986,26) + Trompo (49.990 / 8) × 0,5 h (3.124,38) | 8.110,64 |
+| **Costo directo** | | **348.671,72** |
+
+En la app este cálculo es automático y se recalcula al cambiar cualquier precio del catálogo, cantidad, rendimiento o porcentaje de prestaciones. El editor de APU está en `/apus/{apu}/editar` y las fórmulas viven en `app/Services/ApuCalculator.php`.
+
+---
+
+## 📥 Importación masiva desde Excel
+
+Cada catálogo tiene un botón **Subir Excel** en la parte superior. El flujo es:
+
+1. Descargar la plantilla del catálogo (botón *Descargar plantilla*).
+2. Llenar una fila por registro (la plantilla ya trae un ejemplo).
+3. Subir el archivo y revisar el reporte: **creados**, **actualizados** y **errores por fila**.
+
+### Formatos y columnas
+
+| Catálogo | Archivo | Columnas (la llave en negrita) | Llave de actualización |
+| --- | --- | --- | --- |
+| Proveedores | `.xlsx`, `.xls`, `.csv` | **NOMBRE**, CONTACTO, TELEFONO, EMAIL, DIRECCION | `nombre` |
+| Materiales | `.xlsx`, `.xls`, `.csv` | **CODIGO**, DESCRIPCION, UNIDAD, PRECIO, PROVEEDOR | `codigo` |
+| Equipos | `.xlsx`, `.xls`, `.csv` | **CODIGO**, DESCRIPCION, TIPO, TARIFA_DIA, PROVEEDOR | `codigo` |
+| Mano de obra | `.xlsx`, `.xls`, `.csv` | **CARGO**, JORNAL, DESCRIPCION | `nombre` |
+
+### Reglas
+
+- Se aceptan columnas en **cualquier orden**, columnas extra y encabezados con tildes o alias (`PRECIO UNITARIO`, `VALOR`, `TARIFA DÍA`, `SALARIO`, `CÉLULAR`, etc.).
+- Se leen números en formato colombiano (`28.500,50`, `$ 45.000`) y también `28,500.50`.
+- Si la llave ya existe **en la misma empresa**, se actualiza; nunca se toca data de otra empresa.
+- En una actualización, **una celda vacía no borra** el dato existente.
+- El proveedor debe existir antes de importar materiales o equipos.
+- Los errores se reportan por número de fila y no detienen el resto (máximo 5.000 filas y 10 MB por archivo).
+- Todo el motor está en `app/Services/ImportacionExcelService.php`; las plantillas se generan en `app/Http/Controllers/PlantillaController.php` a partir de `config/importaciones.php`.
 
 ---
 
