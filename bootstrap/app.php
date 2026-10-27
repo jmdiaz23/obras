@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\EnsureEmpresaUser;
+use App\Http\Middleware\EnsureSuperAdmin;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -12,7 +14,14 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo(fn () => route('login'));
-        $middleware->redirectUsersTo(fn () => route('dashboard'));
+        $middleware->redirectUsersTo(fn () => auth()->user()?->esSuperAdmin()
+            ? route('admin.dashboard')
+            : route('dashboard'));
+
+        $middleware->alias([
+            'empresa' => EnsureEmpresaUser::class,
+            'superadmin' => EnsureSuperAdmin::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

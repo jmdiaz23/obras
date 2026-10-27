@@ -73,7 +73,13 @@ class ApuEditor extends Component
         ])->toArray();
 
         $this->linE = $this->apu->equipos->mapWithKeys(fn ($l) => [
-            $l->id => ['horas' => rtrim(rtrim(number_format($l->horas_por_unidad, 4, '.', ''), '0'), '.')],
+            $l->id => [
+                'unidad' => $l->unidad ?: 'hr',
+                'cantidad' => rtrim(rtrim(number_format($l->cantidad, 4, '.', ''), '0'), '.'),
+                'valor_unitario' => $l->valor_unitario !== null
+                    ? rtrim(rtrim(number_format($l->valor_unitario, 4, '.', ''), '0'), '.')
+                    : '',
+            ],
         ])->toArray();
     }
 
@@ -174,11 +180,33 @@ class ApuEditor extends Component
 
     public function updatedLinE(string $valor, string $ruta): void
     {
-        [$id] = explode('.', $ruta);
+        [$id, $campo] = explode('.', $ruta);
 
-        ApuEquipo::query()->where('apu_id', $this->apu->id)
-            ->findOrFail((int) $id)
-            ->update(['horas_por_unidad' => max(0, (float) $valor)]);
+        $linea = ApuEquipo::query()->where('apu_id', $this->apu->id)->findOrFail((int) $id);
+
+        match ($campo) {
+            'unidad' => $this->actualizarUnidadEquipo($linea, $valor),
+            'valor_unitario' => $linea->update([
+                'valor_unitario' => $valor === '' ? null : max(0, (float) $valor),
+            ]),
+            default => $linea->update(['cantidad' => max(0, (float) $valor)]),
+        };
+    }
+
+    private function actualizarUnidadEquipo(ApuEquipo $linea, string $unidad): void
+    {
+        if (! array_key_exists($unidad, config('obras.unidades_equipo'))) {
+            $this->sincronizarLineas();
+
+            return;
+        }
+
+        $linea->update([
+            'unidad' => $unidad,
+            'valor_unitario' => in_array($unidad, ['hr', 'dia'], true) ? null : $linea->valor_unitario,
+        ]);
+
+        $this->sincronizarLineas();
     }
 
     public function agregarMaterial(): void
@@ -226,12 +254,13 @@ class ApuEditor extends Component
             return;
         }
 
-        Equipo::query()->findOrFail($this->selEquipo);
+        $equipo = Equipo::query()->findOrFail($this->selEquipo);
 
         ApuEquipo::create([
             'apu_id' => $this->apu->id,
             'equipo_id' => $this->selEquipo,
-            'horas_por_unidad' => 1,
+            'unidad' => $equipo->unidad_alquiler ?: 'hr',
+            'cantidad' => 1,
             'orden' => ApuEquipo::where('apu_id', $this->apu->id)->max('orden') + 1,
         ]);
 
@@ -259,7 +288,7 @@ class ApuEditor extends Component
             'calculo' => $calculo,
             'materialesDisponibles' => Material::orderBy('codigo')->get(['id', 'codigo', 'descripcion', 'unidad']),
             'cargosDisponibles' => CargoMo::orderBy('nombre')->get(['id', 'nombre']),
-            'equiposDisponibles' => Equipo::orderBy('codigo')->get(['id', 'codigo', 'descripcion']),
+            'equiposDisponibles' => Equipo::orderBy('codigo')->get(['id', 'codigo', 'descripcion', 'unidad_alquiler']),
         ]);
     }
 }

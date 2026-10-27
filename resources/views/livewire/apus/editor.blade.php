@@ -1,6 +1,7 @@
 @php
     $t = $calculo['totales'];
     $fmt = fn ($v) => '$ '.number_format((float) $v, 2, ',', '.');
+    $unidadesEquipo = config('obras.unidades_equipo');
 @endphp
 
 <div class="mx-auto max-w-6xl space-y-5">
@@ -192,8 +193,9 @@
                 <thead>
                     <tr class="border-b border-slate-100 text-left text-[11px] font-bold uppercase tracking-wider text-slate-400">
                         <th class="px-5 py-2.5">Equipo</th>
-                        <th class="w-32 px-3 py-2.5 text-right">Tarifa/hora</th>
-                        <th class="w-32 px-3 py-2.5 text-right">Horas/und.</th>
+                        <th class="w-28 px-3 py-2.5">Unidad</th>
+                        <th class="w-32 px-3 py-2.5 text-right">Valor unitario</th>
+                        <th class="w-28 px-3 py-2.5 text-right">Cantidad</th>
                         <th class="w-36 px-3 py-2.5 text-right">Total</th>
                         <th class="w-10"></th>
                     </tr>
@@ -202,9 +204,28 @@
                     @forelse ($calculo['equipos'] as $linea)
                         <tr wire:key="eq{{ $linea['id'] }}" class="hover:bg-slate-50/60">
                             <td class="px-5 py-2.5 font-medium text-slate-700">{{ $linea['descripcion'] }}</td>
-                            <td class="px-3 py-2.5 text-right font-mono text-slate-500">{{ number_format((float) $linea['tarifa_hora'], 2, ',', '.') }}</td>
                             <td class="px-3 py-2.5">
-                                <input type="number" step="any" min="0" wire:model.live="linE.{{ $linea['id'] }}.horas"
+                                <select wire:model.live="linE.{{ $linea['id'] }}.unidad"
+                                        class="campo px-2 py-2 text-xs">
+                                    @foreach ($unidadesEquipo as $clave => $etiqueta)
+                                        <option value="{{ $clave }}">{{ $etiqueta }}</option>
+                                    @endforeach
+                                </select>
+                            </td>
+                            <td class="px-3 py-2.5 text-right">
+                                @if (in_array($linea['unidad'], ['hr', 'dia'], true))
+                                    <span class="font-mono text-slate-500"
+                                          title="Se calcula con la tarifa del catálogo">
+                                        {{ number_format((float) $linea['valor_unitario'], 2, ',', '.') }}
+                                    </span>
+                                @else
+                                    <input type="number" step="any" min="0"
+                                           wire:model.live.debounce.500ms="linE.{{ $linea['id'] }}.valor_unitario"
+                                           class="campo px-3 py-2 text-right" placeholder="0">
+                                @endif
+                            </td>
+                            <td class="px-3 py-2.5">
+                                <input type="number" step="any" min="0" wire:model.live="linE.{{ $linea['id'] }}.cantidad"
                                        class="campo px-3 py-2 text-right">
                             </td>
                             <td class="px-3 py-2.5 text-right font-mono font-semibold text-slate-900">{{ number_format((float) $linea['total'], 2, ',', '.') }}</td>
@@ -216,10 +237,10 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="5" class="px-5 py-8 text-center text-sm text-slate-400">Agrega equipos de tu catálogo de alquiler.</td></tr>
+                        <tr><td colspan="6" class="px-5 py-8 text-center text-sm text-slate-400">Agrega equipos de tu catálogo de alquiler.</td></tr>
                     @endforelse
                     <tr class="bg-slate-50/80">
-                        <td colspan="3" class="px-5 py-2.5 text-slate-600">
+                        <td colspan="4" class="px-5 py-2.5 text-slate-600">
                             Herramientas menores <span class="text-slate-400">({{ $cab['pct_herramientas'] }}% de la mano de obra)</span>
                         </td>
                         <td colspan="2" class="px-3 py-2.5 text-right font-mono font-semibold text-slate-700">{{ $fmt($t['herramientas']) }}</td>
@@ -234,7 +255,7 @@
                         class="campo">
                     <option value="">Selecciona un equipo...</option>
                     @foreach ($equiposDisponibles as $equipo)
-                        <option value="{{ $equipo->id }}">{{ $equipo->codigo }} — {{ Str::limit($equipo->descripcion, 55) }}</option>
+                        <option value="{{ $equipo->id }}">{{ $equipo->codigo }} — {{ Str::limit($equipo->descripcion, 50) }} ({{ $equipo->unidad_alquiler }})</option>
                     @endforeach
                 </select>
             </div>

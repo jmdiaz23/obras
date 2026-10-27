@@ -63,18 +63,21 @@ Cierra con el número:
 > "¿Ve? No toqué ninguna fórmula. El APU se recalculó solo. Eso es lo que su
 > Excel no puede hacer sin abrir hoja por hoja."
 
-### 5:00 – 6:15 · Presupuesto y AIU
+### 5:00 – 6:15 · Presupuesto, AIU y avance
 
 - Entra al proyecto, muestra capítulos e ítems con cantidades.
 - Explica: `VR TOTAL = cantidad × vr unitario`; el AIU se aplica sobre el subtotal.
 - Cambia una cantidad y muestra cómo se mueve el total.
+- Muestra las etapas y registra una cantidad ejecutada: el presupuesto no cambia, pero el **avance financiero** (valor ganado) y el **avance físico** sí.
+- Abre la vista **Avance**: tarjetas por etapa, capítulos y detalle de cantidades ejecutadas. Aclara que el avance físico solo se calcula cuando la etapa comparte una unidad; si no, manda el financiero.
 
 ### 6:15 – 7:00 · Exportación y cierre
 
 - Exporta el proyecto a Excel.
 - Muestra las hojas: `LISTA DE PRECIOS`, `ALQUILER DE EQUIPOS`, `RENDIMIENTO`,
   una hoja por APU, `MEMORIA DE CALCULO`, `PRESUPUESTO GENERAL`,
-  `TABLA DE TAREAS` y `EJE UNIVERSAL`.
+  `AVANCE DE OBRA`, `TABLA DE TAREAS` y `EJE UNIVERSAL`.
+- En `PRESUPUESTO GENERAL` resalta las columnas *Ejecutado*, *Vr. ejecutado* y *Avance %*; en `AVANCE DE OBRA`, el resumen por etapa y capítulo.
 - Cierre:
 
 > "Usted no tiene que dejar su Excel. ObraOS le entrega el mismo libro que ya
@@ -99,7 +102,7 @@ Cierra con el número:
 | --- | --- | --- |
 | **A. Materiales** | cemento, arena, agua, acero… | `cantidad × (1 + desperdicio%) × precio` |
 | **B. Mano de obra** | oficial, ayudante, cuadrilla… | `jornal × (1 + prestaciones%) × días_por_unidad` |
-| **C. Equipos** | trompo, vibrador, retro… | `(tarifa_día ÷ 8) × horas_por_unidad` |
+| **C. Equipos** | trompo, vibrador, retro, formaleta… | `valor_unitario × cantidad` (por hora, día, m², m³ o und) |
 | **Herramientas** | palas, baldes, menor | `total_mano_obra × %herramientas` |
 
 ```
@@ -155,7 +158,8 @@ centavo a centavo.)
 
 **"¿Varios usuarios o varias empresas?"**
 > "Cada empresa tiene sus catálogos y proyectos aislados. Un usuario nunca ve
-> datos de otra empresa."
+> datos de otra empresa. El alta de empresas y usuarios la hace un super-admin
+> desde el panel de plataforma; no hay registro público."
 
 **"¿Qué pasa si me equivoco en una fila?"**
 > "La importación reporta la fila y el motivo, y sigue con las demás. Nada se
@@ -186,5 +190,6 @@ centavo a centavo.)
 - [ ] Ejecutar `docker compose exec app php artisan db:seed --class=DemoObraSeeder` (idempotente; crea APUs y proyecto si faltan).
 - [ ] APU de concreto 3000 psi cargado (`APU-001`, $348.671,72/m³).
 - [ ] Proyecto *Casa lote 12, Altos de la Sabana* con capítulos *Obra gruesa* y *Acabados*.
-- [ ] Probar la descarga de plantilla y la exportación del proyecto.
+- [ ] Dos etapas demo con avance visible en el editor, la vista **Avance** y el dashboard.
+- [ ] Probar la descarga de plantilla y la exportación del proyecto (hoja `AVANCE DE OBRA` incluida).
 - [ ] Tener a mano la tabla del ejemplo (sección 2) por si preguntan números.

@@ -34,6 +34,7 @@ class Equipos extends Component
         'descripcion' => '',
         'tipo' => '',
         'tarifa_dia' => '',
+        'unidad_alquiler' => 'hr',
         'proveedor_id' => null,
     ];
 
@@ -49,6 +50,7 @@ class Equipos extends Component
             'form.descripcion' => ['required', 'string', 'min:3', 'max:255'],
             'form.tipo' => ['nullable', 'string', 'max:60'],
             'form.tarifa_dia' => ['required', 'numeric', 'min:0'],
+            'form.unidad_alquiler' => ['required', 'string', Rule::in(array_keys(config('obras.unidades_equipo')))],
             'form.proveedor_id' => ['nullable', Rule::exists('proveedores', 'id')->where('empresa_id', auth()->user()->empresa_id)],
         ];
     }
@@ -63,6 +65,8 @@ class Equipos extends Component
             'form.tarifa_dia.required' => 'La tarifa por día es obligatoria.',
             'form.tarifa_dia.numeric' => 'La tarifa debe ser un número.',
             'form.tarifa_dia.min' => 'La tarifa no puede ser negativa.',
+            'form.unidad_alquiler.required' => 'La unidad de alquiler es obligatoria.',
+            'form.unidad_alquiler.in' => 'La unidad de alquiler no es válida.',
         ];
     }
 
@@ -85,7 +89,7 @@ class Equipos extends Component
 
         $this->registroId = $equipo->id;
         $this->form = [
-            ...$equipo->only(['codigo', 'descripcion', 'tipo', 'proveedor_id']),
+            ...$equipo->only(['codigo', 'descripcion', 'tipo', 'proveedor_id', 'unidad_alquiler']),
             'tarifa_dia' => rtrim(rtrim(number_format($equipo->tarifa_dia, 2, '.', ''), '0'), '.'),
         ];
         $this->editando = true;
@@ -145,6 +149,7 @@ class Equipos extends Component
             'descripcion' => '',
             'tipo' => '',
             'tarifa_dia' => '',
+            'unidad_alquiler' => 'hr',
             'proveedor_id' => null,
         ];
     }

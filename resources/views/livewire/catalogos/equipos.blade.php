@@ -10,7 +10,7 @@
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <h2 class="text-lg font-bold text-slate-900">Alquiler de equipos</h2>
-            <p class="text-sm text-slate-500">Tarifas por día que entrarán al costo de tus APU.</p>
+            <p class="text-sm text-slate-500">Tarifa por día y unidad de alquiler (hora, día, m², m³) que entrarán al costo de tus APU.</p>
         </div>
         <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
             <x-importar-excel modulo="equipos"
@@ -40,6 +40,7 @@
                     <th class="px-6 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-500">Equipo</th>
                     <th class="px-6 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-500">Tipo</th>
                     <th class="px-6 py-3.5 text-right text-xs font-bold uppercase tracking-wider text-slate-500">Tarifa / día</th>
+                    <th class="px-6 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-500">Alquiler</th>
                     <th class="px-6 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-500">Proveedor</th>
                     <th class="relative px-6 py-3.5"><span class="sr-only">Acciones</span></th>
                 </tr>
@@ -53,6 +54,11 @@
                         <td class="max-w-xs truncate px-6 py-4 text-sm font-medium text-slate-900">{{ $equipo->descripcion }}</td>
                         <td class="px-6 py-4"><span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">{{ $equipo->tipo ?? '—' }}</span></td>
                         <td class="px-6 py-4 text-right text-sm font-bold tabular-nums text-slate-900">$ {{ number_format($equipo->tarifa_dia, 2, ',', '.') }}</td>
+                        <td class="px-6 py-4">
+                            <span class="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
+                                {{ config('obras.unidades_equipo.'.$equipo->unidad_alquiler, $equipo->unidad_alquiler) }}
+                            </span>
+                        </td>
                         <td class="px-6 py-4 text-sm text-slate-500">{{ $equipo->proveedor?->nombre ?? '—' }}</td>
                         <td class="px-6 py-4 text-right text-sm whitespace-nowrap">
                             <button wire:click="editar({{ $equipo->id }})" class="font-semibold text-amber-600 hover:text-amber-700">Editar</button>
@@ -66,7 +72,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="px-6 py-12 text-center text-sm text-slate-400">
+                    <tr><td colspan="7" class="px-6 py-12 text-center text-sm text-slate-400">
                         No hay equipos aún. Registra el trompo, los andamios, la rana...
                     </td></tr>
                 @endforelse
@@ -85,8 +91,11 @@
                     </div>
                     <p class="shrink-0 text-sm font-bold tabular-nums text-slate-900">$ {{ number_format($equipo->tarifa_dia, 0, ',', '.') }}/día</p>
                 </div>
-                <div class="mt-2 flex items-center gap-2 text-xs text-slate-500">
+                <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                     @if ($equipo->tipo)<span class="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-600">{{ $equipo->tipo }}</span>@endif
+                    <span class="rounded-full bg-amber-50 px-2 py-0.5 font-semibold text-amber-700">
+                        Alquiler: {{ $equipo->unidad_alquiler }}
+                    </span>
                     {{ $equipo->proveedor?->nombre ?? '' }}
                 </div>
                 <div class="mt-3 flex gap-4 border-t border-slate-100 pt-3 text-sm">
@@ -109,9 +118,19 @@
 
     <x-form.modal :open="$mostrarModal" titulo="{{ $editando ? 'Editar equipo' : 'Nuevo equipo' }}">
         <form class="space-y-4" wire:submit="guardar">
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <x-form.input label="Código" name="form.codigo" wire:model="form.codigo" required placeholder="E1" hint="Ej: E1, E2..." />
                 <x-form.input label="Tarifa por día" name="form.tarifa_dia" type="number" step="0.01" min="0" wire:model="form.tarifa_dia" required placeholder="39900" />
+                <div>
+                    <label for="form.unidad_alquiler" class="mb-1.5 block text-sm font-medium text-slate-700">Unidad de alquiler</label>
+                    <select id="form.unidad_alquiler" wire:model="form.unidad_alquiler" class="campo">
+                        @foreach (config('obras.unidades_equipo') as $clave => $etiqueta)
+                            <option value="{{ $clave }}">{{ $etiqueta }}</option>
+                        @endforeach
+                    </select>
+                    <p class="mt-1.5 text-xs text-slate-500">Se sugiere al agregar el equipo a un APU.</p>
+                    @error('form.unidad_alquiler') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                </div>
                 <x-form.input label="Tipo" name="form.tipo" wire:model="form.tipo" placeholder="Rana / Gasolina..." />
             </div>
             <x-form.input label="Descripción" name="form.descripcion" wire:model="form.descripcion" required placeholder="Vibrocompactador manual" />

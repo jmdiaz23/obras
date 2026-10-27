@@ -33,4 +33,9 @@ class Empresa extends Model
     {
         return $this->hasMany(User::class);
     }
+
+    public function proyectos(): HasMany
+    {
+        return $this->hasMany(Proyecto::class);
+    }
 }

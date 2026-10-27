@@ -10,6 +10,7 @@ use App\Models\Material;
 use App\Models\Proveedor;
 use App\Models\Proyecto;
 use App\Models\ProyectoApu;
+use App\Models\ProyectoEtapa;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
@@ -25,6 +26,17 @@ class DemoObraSeeder extends Seeder
 
     public function run(): void
     {
+        User::query()->updateOrCreate(
+            ['email' => 'super@obras.com'],
+            [
+                'empresa_id' => null,
+                'name' => 'Super Administrador',
+                'password' => 'password123',
+                'role' => User::ROLE_SUPER_ADMIN,
+                'es_super_admin' => true,
+            ],
+        );
+
         $this->empresa = Empresa::firstOrCreate(
             ['nit' => '901456789-2'],
             [
@@ -264,7 +276,8 @@ class DemoObraSeeder extends Seeder
 
             $apu->equipos()->create([
                 'equipo_id' => $equipo->id,
-                'horas_por_unidad' => $horas,
+                'unidad' => 'hr',
+                'cantidad' => $horas,
                 'orden' => $orden + 1,
             ]);
         }
@@ -292,6 +305,16 @@ class DemoObraSeeder extends Seeder
         );
 
         if ($proyecto->items()->exists()) {
+            $etapaObraGris = ProyectoEtapa::firstOrCreate(
+                ['proyecto_id' => $proyecto->id, 'nombre' => 'Etapa 1 - Obra gris'],
+                ['orden' => 1, 'fecha_inicio' => '2026-08-01', 'fecha_fin' => '2026-10-31'],
+            );
+            $etapaAcabados = ProyectoEtapa::firstOrCreate(
+                ['proyecto_id' => $proyecto->id, 'nombre' => 'Etapa 2 - Acabados'],
+                ['orden' => 2, 'fecha_inicio' => '2026-11-01', 'fecha_fin' => '2027-01-31'],
+            );
+            $this->vincularEtapasYAvance($proyecto, $etapaObraGris, $etapaAcabados);
+
             return;
         }
 
@@ -318,8 +341,58 @@ class DemoObraSeeder extends Seeder
                 'titulo' => $fila['titulo'],
                 'es_capitulo' => $fila['apu'] === null,
                 'cantidad' => $fila['cantidad'],
+                'cantidad_ejecutada' => 0,
                 'orden' => $orden + 1,
             ]);
+        }
+
+        $etapaObraGris = ProyectoEtapa::firstOrCreate(
+            ['proyecto_id' => $proyecto->id, 'nombre' => 'Etapa 1 - Obra gris'],
+            ['orden' => 1, 'fecha_inicio' => '2026-08-01', 'fecha_fin' => '2026-10-31'],
+        );
+        $etapaAcabados = ProyectoEtapa::firstOrCreate(
+            ['proyecto_id' => $proyecto->id, 'nombre' => 'Etapa 2 - Acabados'],
+            ['orden' => 2, 'fecha_inicio' => '2026-11-01', 'fecha_fin' => '2027-01-31'],
+        );
+
+        $this->vincularEtapasYAvance($proyecto, $etapaObraGris, $etapaAcabados);
+    }
+
+    private function vincularEtapasYAvance(Proyecto $proyecto, ProyectoEtapa $etapaObraGris, ProyectoEtapa $etapaAcabados): void
+    {
+        foreach (['1' => $etapaObraGris, '2' => $etapaAcabados] as $itemCapitulo => $etapa) {
+            ProyectoApu::query()
+                ->where('proyecto_id', $proyecto->id)
+                ->where('item', $itemCapitulo)
+                ->where('es_capitulo', true)
+                ->whereNull('etapa_id')
+                ->update(['etapa_id' => $etapa->id]);
+
+            ProyectoApu::query()
+                ->where('proyecto_id', $proyecto->id)
+                ->where('es_capitulo', false)
+                ->where('item', 'like', $itemCapitulo.'.%')
+                ->whereNull('etapa_id')
+                ->update(['etapa_id' => $etapa->id]);
+        }
+
+        $tieneAvance = ProyectoApu::query()
+            ->where('proyecto_id', $proyecto->id)
+            ->where('es_capitulo', false)
+            ->where('cantidad_ejecutada', '>', 0)
+            ->exists();
+
+        if ($tieneAvance) {
+            return;
+        }
+
+        // Avance de demostración: concreto terminado, muro parcial y piso parcial.
+        foreach (['1.1' => 85, '1.2' => 380, '2.1' => 120] as $item => $ejecutada) {
+            ProyectoApu::query()
+                ->where('proyecto_id', $proyecto->id)
+                ->where('es_capitulo', false)
+                ->where('item', $item)
+                ->update(['cantidad_ejecutada' => $ejecutada]);
         }
     }
 

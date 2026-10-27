@@ -8,8 +8,11 @@ use App\Models\Apu;
 use App\Models\CargoMo;
 use App\Models\Empresa;
 use App\Models\Proyecto;
+use App\Models\ProyectoApu;
+use App\Models\ProyectoEtapa;
 use App\Models\User;
 use App\Services\ApuCalculator;
+use App\Services\AvanceService;
 use App\Services\PresupuestoService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -111,6 +114,66 @@ class ProyectoTest extends TestCase
         $this->assertEqualsWithDelta(920955.42, $r['total'], 0.03);
     }
 
+    public function test_calcula_subtotal_por_capitulo(): void
+    {
+        $apu = $this->crearApuReplanteo();
+        $cd = ApuCalculator::calcular($apu->fresh(['manoObra.cargo', 'empresa']))['totales']['costo_directo'];
+
+        $proyecto = Proyecto::create(['nombre' => 'PROYECTO CON CAPITULOS']);
+
+        $capitulo1 = $proyecto->items()->create([
+            'apu_id' => null, 'item' => '1', 'titulo' => 'OBRAS PRELIMINARES',
+            'es_capitulo' => true, 'cantidad' => null, 'orden' => 1,
+        ]);
+        $proyecto->items()->create(['apu_id' => $apu->id, 'item' => '1.1', 'cantidad' => 10, 'orden' => 2]);
+        $proyecto->items()->create(['apu_id' => $apu->id, 'item' => '1.2', 'cantidad' => 5, 'orden' => 3]);
+
+        $capitulo2 = $proyecto->items()->create([
+            'apu_id' => null, 'item' => '2', 'titulo' => 'ESTRUCTURA',
+            'es_capitulo' => true, 'cantidad' => null, 'orden' => 4,
+        ]);
+        $proyecto->items()->create(['apu_id' => $apu->id, 'item' => '2.1', 'cantidad' => 1, 'orden' => 5]);
+
+        $resultado = PresupuestoService::calcular(
+            $proyecto->fresh(['items.apu.materiales.material', 'items.apu.manoObra.cargo', 'items.apu.equipos.equipo', 'items.apu.empresa'])
+        );
+
+        $lineaCap1 = $resultado['lineas']->firstWhere('id', $capitulo1->id);
+        $lineaCap2 = $resultado['lineas']->firstWhere('id', $capitulo2->id);
+
+        $this->assertEqualsWithDelta(15 * $cd, $lineaCap1['subtotal_capitulo'], 0.02);
+        $this->assertEqualsWithDelta(1 * $cd, $lineaCap2['subtotal_capitulo'], 0.02);
+        $this->assertEqualsWithDelta(16 * $cd, $resultado['resumen']['subtotal'], 0.02);
+    }
+
+    public function test_calcula_iva_solo_sobre_la_utilidad(): void
+    {
+        $apu = $this->crearApuReplanteo();
+
+        $proyecto = Proyecto::create([
+            'nombre' => 'OBRA CON IVA SOBRE UTILIDAD',
+            'pct_utilidad' => 10,
+            'pct_iva_utilidad' => 19,
+        ]);
+
+        $proyecto->items()->create([
+            'apu_id' => $apu->id, 'item' => '1.1', 'cantidad' => 10, 'orden' => 1,
+        ]);
+
+        $r = PresupuestoService::calcular(
+            $proyecto->fresh(['items.apu.materiales.material', 'items.apu.manoObra.cargo', 'items.apu.equipos.equipo', 'items.apu.empresa'])
+        )['resumen'];
+
+        $ivaEsperado = round($r['utilidad'] * 0.19, 2);
+
+        $this->assertEqualsWithDelta($ivaEsperado, $r['iva_utilidad'], 0.01);
+        $this->assertEqualsWithDelta(
+            $r['subtotal'] + $r['administracion'] + $r['imprevistos'] + $r['utilidad'] + $ivaEsperado,
+            $r['total'],
+            0.01,
+        );
+    }
+
     public function test_crea_proyecto_y_redirige_al_editor(): void
     {
         Livewire::test(Proyectos::class)
@@ -172,6 +235,7 @@ class ProyectoTest extends TestCase
         Livewire::test(ProyectoEditor::class, ['proyecto' => $proyecto])
             ->set('cab.pct_administracion', '15')
             ->set('cab.pct_utilidad', '12')
+            ->set('cab.pct_iva_utilidad', '19')
             ->call('guardarDatos')
             ->assertHasNoErrors();
 
@@ -180,6 +244,7 @@ class ProyectoTest extends TestCase
             'pct_administracion' => 15,
             'pct_imprevistos' => 5,
             'pct_utilidad' => 12,
+            'pct_iva_utilidad' => 19,
         ]);
     }
 
@@ -199,6 +264,10 @@ class ProyectoTest extends TestCase
         $this->actingAs($otroUser)
             ->get(route('proyectos.editar', $proyecto))
             ->assertNotFound();
+
+        $this->actingAs($otroUser)
+            ->get(route('proyectos.avance', $proyecto))
+            ->assertNotFound();
     }
 
     public function test_lista_de_proyectos_carga_correctamente(): void
@@ -206,5 +275,170 @@ class ProyectoTest extends TestCase
         Proyecto::create(['nombre' => 'VIVIENDA UNIFAMILIAR']);
 
         Livewire::test(Proyectos::class)->assertOk();
+    }
+
+    public function test_crea_etapa_asigna_capitulo_y_propaga_a_los_items(): void
+    {
+        $apu = $this->crearApuReplanteo();
+        $proyecto = Proyecto::create(['nombre' => 'OBRA POR ETAPAS']);
+
+        $capitulo = $proyecto->items()->create([
+            'apu_id' => null,
+            'item' => '1',
+            'titulo' => 'OBRAS PRELIMINARES',
+            'es_capitulo' => true,
+            'cantidad' => null,
+            'orden' => 1,
+        ]);
+
+        $item = $proyecto->items()->create([
+            'apu_id' => $apu->id,
+            'item' => '1.1',
+            'cantidad' => 10,
+            'cantidad_ejecutada' => 2,
+            'orden' => 2,
+        ]);
+
+        Livewire::test(ProyectoEditor::class, ['proyecto' => $proyecto])
+            ->call('abrirEtapa')
+            ->set('etapa.nombre', 'Etapa 1 - Obra gris')
+            ->set('etapa.fecha_inicio', '2026-08-01')
+            ->set('etapa.fecha_fin', '2026-10-31')
+            ->call('agregarEtapa')
+            ->assertHasNoErrors();
+
+        $etapa = ProyectoEtapa::where('proyecto_id', $proyecto->id)->firstOrFail();
+
+        $this->assertSame('Etapa 1 - Obra gris', $etapa->nombre);
+        $this->assertSame('2026-08-01', $etapa->fecha_inicio->toDateString());
+        $this->assertSame('2026-10-31', $etapa->fecha_fin->toDateString());
+
+        Livewire::test(ProyectoEditor::class, ['proyecto' => $proyecto])
+            ->call('asignarEtapa', $capitulo->id, $etapa->id)
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('proyecto_apu', [
+            'id' => $capitulo->id,
+            'etapa_id' => $etapa->id,
+        ]);
+        $this->assertDatabaseHas('proyecto_apu', [
+            'id' => $item->id,
+            'etapa_id' => $etapa->id,
+        ]);
+
+        // Un APU nuevo bajo el capítulo hereda su etapa.
+        Livewire::test(ProyectoEditor::class, ['proyecto' => $proyecto])
+            ->set('selApu', $apu->id)
+            ->call('agregarApu')
+            ->assertHasNoErrors();
+
+        $nuevoItem = ProyectoApu::where('proyecto_id', $proyecto->id)
+            ->where('item', '1.2')
+            ->firstOrFail();
+
+        $this->assertSame($etapa->id, $nuevoItem->etapa_id);
+    }
+
+    public function test_calcula_avance_financiero_y_fisico_con_cantidades_ejecutadas(): void
+    {
+        $apu = $this->crearApuReplanteo();
+        $proyecto = Proyecto::create(['nombre' => 'OBRA CON AVANCE']);
+
+        $etapa = ProyectoEtapa::create([
+            'proyecto_id' => $proyecto->id,
+            'nombre' => 'Etapa única',
+            'orden' => 1,
+        ]);
+
+        $proyecto->items()->create([
+            'apu_id' => null,
+            'etapa_id' => $etapa->id,
+            'item' => '1',
+            'titulo' => 'REPLANTEO',
+            'es_capitulo' => true,
+            'cantidad' => null,
+            'orden' => 1,
+        ]);
+
+        $item = $proyecto->items()->create([
+            'apu_id' => $apu->id,
+            'etapa_id' => $etapa->id,
+            'item' => '1.1',
+            'cantidad' => 10,
+            'cantidad_ejecutada' => 0,
+            'orden' => 2,
+        ]);
+
+        Livewire::test(ProyectoEditor::class, ['proyecto' => $proyecto])
+            ->set("ejecutadas.{$item->id}", '5')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('proyecto_apu', [
+            'id' => $item->id,
+            'cantidad_ejecutada' => 5,
+        ]);
+
+        $avance = AvanceService::calcular($proyecto->fresh());
+
+        $this->assertSame(50.0, $avance['resumen']['avance_financiero']);
+        $this->assertSame(50.0, $avance['resumen']['avance_fisico']);
+        $this->assertSame('M2', $avance['resumen']['unidad_fisica']);
+        $this->assertSame(1, $avance['resumen']['items']);
+        $this->assertSame(0, $avance['resumen']['items_terminados']);
+        $this->assertSame(50.0, $avance['capitulos'][0]['avance_financiero']);
+        $this->assertSame(50.0, $avance['capitulos'][0]['avance_fisico']);
+        $this->assertSame(50.0, $avance['etapas'][0]['avance_financiero']);
+        $this->assertSame(50.0, $avance['etapas'][0]['avance_fisico']);
+        $this->assertSame('Etapa única', $avance['etapas'][0]['nombre']);
+    }
+
+    public function test_eliminar_etapa_deja_los_capitulos_sin_etapa(): void
+    {
+        $proyecto = Proyecto::create(['nombre' => 'OBRA CON ETAPA TEMPORAL']);
+        $etapa = ProyectoEtapa::create([
+            'proyecto_id' => $proyecto->id,
+            'nombre' => 'Temporal',
+            'orden' => 1,
+        ]);
+        $capitulo = $proyecto->items()->create([
+            'apu_id' => null,
+            'etapa_id' => $etapa->id,
+            'item' => '1',
+            'titulo' => 'CAPITULO',
+            'es_capitulo' => true,
+            'cantidad' => null,
+            'orden' => 1,
+        ]);
+
+        Livewire::test(ProyectoEditor::class, ['proyecto' => $proyecto])
+            ->call('eliminarEtapa', $etapa->id)
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseMissing('proyecto_etapas', ['id' => $etapa->id]);
+        $this->assertDatabaseHas('proyecto_apu', [
+            'id' => $capitulo->id,
+            'etapa_id' => null,
+        ]);
+    }
+
+    public function test_vista_de_avance_carga_para_la_empresa_del_proyecto(): void
+    {
+        $proyecto = Proyecto::create(['nombre' => 'OBRA VISIBLE']);
+
+        $this->get(route('proyectos.avance', $proyecto))
+            ->assertOk()
+            ->assertSee('Avance de obra')
+            ->assertSee('OBRA VISIBLE');
+    }
+
+    public function test_dashboard_muestra_la_tarjeta_de_avance(): void
+    {
+        Proyecto::create(['nombre' => 'OBRA EN DASHBOARD']);
+
+        $this->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('Avance de obra')
+            ->assertSee('OBRA EN DASHBOARD')
+            ->assertSee('Abrir avance');
     }
 }

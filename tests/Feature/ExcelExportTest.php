@@ -8,6 +8,7 @@ use App\Models\Empresa;
 use App\Models\Equipo;
 use App\Models\Material;
 use App\Models\Proyecto;
+use App\Models\ProyectoEtapa;
 use App\Models\User;
 use App\Services\ApuCalculator;
 use App\Services\PresupuestoService;
@@ -82,7 +83,7 @@ class ExcelExportTest extends TestCase
 
         $apu->materiales()->create(['material_id' => $material->id, 'cantidad' => 6, 'desperdicio_pct' => 10, 'orden' => 1]);
         $apu->manoObra()->create(['cargo_id' => $ayudante->id, 'dias_por_unidad' => 2.5, 'orden' => 1]);
-        $apu->equipos()->create(['equipo_id' => $equipo->id, 'horas_por_unidad' => 4, 'orden' => 1]);
+        $apu->equipos()->create(['equipo_id' => $equipo->id, 'unidad' => 'hr', 'cantidad' => 4, 'orden' => 1]);
 
         return $apu;
     }
@@ -119,6 +120,7 @@ class ExcelExportTest extends TestCase
             'APU 1.1',
             'MEMORIA DE CALCULO',
             'PRESUPUESTO GENERAL',
+            'AVANCE DE OBRA',
             'TABLA DE TAREAS',
             'EJE UNIVERSAL',
         ], $libro->getSheetNames());
@@ -173,6 +175,7 @@ class ExcelExportTest extends TestCase
         $alquiler = $libro->getSheetByName('ALQUILER DE EQUIPOS');
         $this->assertSame('EQ-001', $alquiler->getCell('B3')->getValue());
         $this->assertSame(24995.0, (float) $alquiler->getCell('F3')->getValue());
+        $this->assertSame('hr', $alquiler->getCell('G3')->getValue());
 
         // RENDIMIENTO: 1/dias_por_unidad de la cuadrilla
         $rendimiento = $libro->getSheetByName('RENDIMIENTO');
@@ -211,6 +214,126 @@ class ExcelExportTest extends TestCase
         $r = PresupuestoService::calcular($proyecto->fresh(['items.apu.materiales.material', 'items.apu.manoObra.cargo', 'items.apu.equipos.equipo', 'items.apu.empresa']))['resumen'];
         $this->assertSame($r['subtotal'], (float) $presupuesto->getCell('F9')->getValue());
         $this->assertSame($r['total'], (float) $presupuesto->getCell('F13')->getValue());
+    }
+
+    public function test_exporta_subtotal_por_capitulo_e_iva_sobre_utilidad(): void
+    {
+        $apu = $this->crearApuReplanteo();
+
+        $proyecto = Proyecto::query()->create([
+            'nombre' => 'OBRA CON IVA SOBRE UTILIDAD',
+            'pct_utilidad' => 10,
+            'pct_iva_utilidad' => 19,
+        ]);
+
+        $proyecto->items()->create([
+            'apu_id' => null, 'item' => '1', 'titulo' => 'OBRAS PRELIMINARES',
+            'es_capitulo' => true, 'cantidad' => null, 'orden' => 1,
+        ]);
+        $proyecto->items()->create([
+            'apu_id' => $apu->id, 'item' => '1.1', 'cantidad' => 10, 'orden' => 2,
+        ]);
+
+        $libro = $this->abrir($this->generarExcel($proyecto));
+        $hoja = $libro->getSheetByName('PRESUPUESTO GENERAL');
+
+        $r = PresupuestoService::calcular(
+            $proyecto->fresh(['items.apu.materiales.material', 'items.apu.manoObra.cargo', 'items.apu.equipos.equipo', 'items.apu.empresa'])
+        )['resumen'];
+
+        $buscarFila = function (string $texto) use ($hoja): ?int {
+            foreach ($hoja->toArray() as $i => $fila) {
+                if (isset($fila[0]) && str_starts_with((string) $fila[0], $texto)) {
+                    return $i + 1;
+                }
+            }
+
+            return null;
+        };
+
+        $filaCapitulo = $buscarFila('SUBTOTAL CAPITULO 1');
+        $this->assertNotNull($filaCapitulo);
+        $this->assertSame($r['subtotal'], (float) $hoja->getCell("F{$filaCapitulo}")->getValue());
+
+        $filaIva = $buscarFila('IVA SOBRE UTILIDAD 19');
+        $this->assertNotNull($filaIva);
+        $this->assertSame($r['iva_utilidad'], (float) $hoja->getCell("F{$filaIva}")->getValue());
+        $this->assertEqualsWithDelta($r['utilidad'] * 0.19, $r['iva_utilidad'], 0.02);
+
+        $filaTotal = $buscarFila('TOTAL VENTA');
+        $this->assertNotNull($filaTotal);
+        $this->assertSame($r['total'], (float) $hoja->getCell("F{$filaTotal}")->getValue());
+    }
+
+    public function test_exporta_avance_por_etapa_y_cantidades_ejecutadas(): void
+    {
+        $apu = $this->crearApuReplanteo();
+
+        $proyecto = Proyecto::query()->create(['nombre' => 'OBRA CON AVANCE']);
+
+        $etapa = ProyectoEtapa::create([
+            'proyecto_id' => $proyecto->id,
+            'nombre' => 'Etapa 1 - Obra gris',
+            'orden' => 1,
+        ]);
+
+        $proyecto->items()->create([
+            'apu_id' => null,
+            'etapa_id' => $etapa->id,
+            'item' => '1',
+            'titulo' => 'REPLANTEO',
+            'es_capitulo' => true,
+            'cantidad' => null,
+            'orden' => 1,
+        ]);
+        $proyecto->items()->create([
+            'apu_id' => $apu->id,
+            'etapa_id' => $etapa->id,
+            'item' => '1.1',
+            'cantidad' => 10,
+            'cantidad_ejecutada' => 5,
+            'orden' => 2,
+        ]);
+
+        $libro = $this->abrir($this->generarExcel($proyecto));
+
+        $presupuesto = $libro->getSheetByName('PRESUPUESTO GENERAL');
+        $this->assertSame('EJECUTADO', $presupuesto->getCell('H6')->getValue());
+        $this->assertSame('VR. EJECUTADO', $presupuesto->getCell('I6')->getValue());
+        $this->assertSame('AVANCE %', $presupuesto->getCell('J6')->getValue());
+        $this->assertSame(5.0, (float) $presupuesto->getCell('H8')->getValue());
+        $this->assertSame(72412.83, (float) $presupuesto->getCell('I8')->getValue());
+        $this->assertSame(50.0, (float) $presupuesto->getCell('J8')->getValue());
+        $this->assertSame(144825.66, (float) $presupuesto->getCell('F9')->getValue());
+        $this->assertSame(72412.83, (float) $presupuesto->getCell('I9')->getValue());
+        $this->assertSame(50.0, (float) $presupuesto->getCell('J9')->getValue());
+
+        $hojaAvance = $libro->getSheetByName('AVANCE DE OBRA');
+        $this->assertSame('AVANCE FINANCIERO', $hojaAvance->getCell('A5')->getValue());
+        $this->assertSame(50.0, (float) $hojaAvance->getCell('B5')->getValue());
+        $this->assertSame('AVANCE FISICO', $hojaAvance->getCell('D5')->getValue());
+        $this->assertSame(50.0, (float) $hojaAvance->getCell('E5')->getValue());
+        $this->assertSame('0 de 1', $hojaAvance->getCell('H5')->getValue());
+        $this->assertSame(144825.66, (float) $hojaAvance->getCell('B6')->getValue());
+        $this->assertSame(72412.83, (float) $hojaAvance->getCell('B7')->getValue());
+
+        $this->assertSame('Etapa 1 - Obra gris', $hojaAvance->getCell('A10')->getValue());
+        $this->assertSame(1, $hojaAvance->getCell('B10')->getValue());
+        $this->assertSame(1, $hojaAvance->getCell('C10')->getValue());
+        $this->assertSame(144825.66, (float) $hojaAvance->getCell('D10')->getValue());
+        $this->assertSame(72412.83, (float) $hojaAvance->getCell('E10')->getValue());
+        $this->assertSame(50.0, (float) $hojaAvance->getCell('F10')->getValue());
+        $this->assertSame(50.0, (float) $hojaAvance->getCell('G10')->getValue());
+        $this->assertSame('M2', $hojaAvance->getCell('H10')->getValue());
+
+        $this->assertSame('Etapa 1 - Obra gris', $hojaAvance->getCell('A14')->getValue());
+        $this->assertSame('REPLANTEO', $hojaAvance->getCell('B14')->getValue());
+        $this->assertSame('1', (string) $hojaAvance->getCell('C14')->getValue());
+        $this->assertSame(144825.66, (float) $hojaAvance->getCell('D14')->getValue());
+        $this->assertSame(72412.83, (float) $hojaAvance->getCell('E14')->getValue());
+        $this->assertSame(50.0, (float) $hojaAvance->getCell('F14')->getValue());
+        $this->assertSame(50.0, (float) $hojaAvance->getCell('G14')->getValue());
+        $this->assertSame('M2', $hojaAvance->getCell('H14')->getValue());
     }
 
     public function test_ruta_de_exportacion_requiere_autenticacion(): void

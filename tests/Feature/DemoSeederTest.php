@@ -8,7 +8,9 @@ use App\Models\Empresa;
 use App\Models\Material;
 use App\Models\Proyecto;
 use App\Models\ProyectoApu;
+use App\Models\ProyectoEtapa;
 use App\Services\ApuCalculator;
+use App\Services\AvanceService;
 use App\Services\PresupuestoService;
 use Database\Seeders\DemoObraSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -97,6 +99,38 @@ class DemoSeederTest extends TestCase
         $this->assertSame(['OBRA GRUESA', 'ACABADOS'], $capitulos);
     }
 
+    public function test_el_demo_tiene_etapas_y_avance_sin_alterar_los_totales(): void
+    {
+        $proyecto = $this->proyecto();
+
+        $this->assertSame(2, ProyectoEtapa::where('proyecto_id', $proyecto->id)->count());
+
+        $proyecto->load('items.etapa');
+
+        $capituloGris = $proyecto->items->firstWhere('item', '1');
+        $capituloAcabados = $proyecto->items->firstWhere('item', '2');
+        $concreto = $proyecto->items->firstWhere('item', '1.1');
+        $muro = $proyecto->items->firstWhere('item', '1.2');
+        $piso = $proyecto->items->firstWhere('item', '2.1');
+
+        $this->assertSame('Etapa 1 - Obra gris', $capituloGris->etapa->nombre);
+        $this->assertSame('Etapa 2 - Acabados', $capituloAcabados->etapa->nombre);
+        $this->assertSame($capituloGris->etapa_id, $concreto->etapa_id);
+        $this->assertSame($capituloGris->etapa_id, $muro->etapa_id);
+        $this->assertSame($capituloAcabados->etapa_id, $piso->etapa_id);
+
+        $this->assertSame(85.0, $concreto->cantidad_ejecutada);
+        $this->assertSame(380.0, $muro->cantidad_ejecutada);
+        $this->assertSame(120.0, $piso->cantidad_ejecutada);
+
+        $avance = AvanceService::calcular($proyecto);
+
+        $this->assertSame(2, count($avance['etapas']));
+        $this->assertGreaterThan(0, $avance['resumen']['avance_financiero']);
+        $this->assertSame(1, $avance['resumen']['items_terminados']); // concreto 100 %
+        $this->assertGreaterThan(0, $avance['etapas'][1]['avance_fisico']); // acabados solo en M2
+    }
+
     public function test_es_idempotente_y_no_duplica_datos(): void
     {
         $this->seed(DemoObraSeeder::class);
@@ -107,6 +141,7 @@ class DemoSeederTest extends TestCase
         $this->assertSame(3, Apu::withoutGlobalScopes()->where('empresa_id', $empresa->id)->count());
         $this->assertSame(1, Proyecto::withoutGlobalScopes()->where('empresa_id', $empresa->id)->count());
         $this->assertSame(5, ProyectoApu::where('proyecto_id', $this->proyecto()->id)->count());
+        $this->assertSame(2, ProyectoEtapa::where('proyecto_id', $this->proyecto()->id)->count());
         $this->assertSame(47, Material::withoutGlobalScopes()->where('empresa_id', $empresa->id)->count());
         $this->assertSame(2, CargoMo::withoutGlobalScopes()->where('empresa_id', $empresa->id)->count());
     }

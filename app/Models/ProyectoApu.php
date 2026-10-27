@@ -14,10 +14,12 @@ class ProyectoApu extends Model
     protected $fillable = [
         'proyecto_id',
         'apu_id',
+        'etapa_id',
         'item',
         'titulo',
         'es_capitulo',
         'cantidad',
+        'cantidad_ejecutada',
         'orden',
     ];
 
@@ -26,6 +28,7 @@ class ProyectoApu extends Model
         return [
             'es_capitulo' => 'boolean',
             'cantidad' => 'float',
+            'cantidad_ejecutada' => 'float',
             'orden' => 'integer',
         ];
     }
@@ -38,5 +41,10 @@ class ProyectoApu extends Model
     public function apu(): BelongsTo
     {
         return $this->belongsTo(Apu::class);
+    }
+
+    public function etapa(): BelongsTo
+    {
+        return $this->belongsTo(ProyectoEtapa::class, 'etapa_id');
     }
 }

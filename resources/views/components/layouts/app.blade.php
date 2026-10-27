@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? 'Panel' }} | ObraOS</title>
+    @include('partials.brand-head')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>
@@ -13,11 +14,8 @@
 
     {{-- Sidebar escritorio --}}
     <aside class="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col bg-slate-900 lg:flex">
-        <div class="flex h-16 items-center gap-3 border-b border-white/10 px-6">
-            <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-400/15">
-                <span class="text-lg font-black text-amber-400">O</span>
-            </div>
-            <span class="text-lg font-bold tracking-tight text-white">Obra<span class="text-amber-400">OS</span></span>
+        <div class="flex h-16 items-center border-b border-white/10 px-5">
+            <x-brand.logo dark />
         </div>
 
         <nav class="flex-1 space-y-1 overflow-y-auto px-3 py-4">
@@ -49,7 +47,7 @@
            x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full"
            class="fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-slate-900 lg:hidden">
         <div class="flex h-16 items-center justify-between border-b border-white/10 px-5">
-            <span class="text-lg font-bold tracking-tight text-white">Obra<span class="text-amber-400">OS</span></span>
+            <x-brand.logo dark mark="h-8 w-8" text="text-base" />
             <button x-on:click="sidebarOpen = false" class="rounded-lg p-2 text-slate-400 hover:bg-white/10 hover:text-white">
                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>

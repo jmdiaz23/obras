@@ -113,8 +113,8 @@ class ImportacionExcelTest extends TestCase
     public function test_importa_equipos_y_mano_de_obra_tolerando_alias_y_formatos_de_moneda(): void
     {
         $resultadoEquipos = $this->importar('equipos', implode("\n", [
-            'Código;Equipo;Tipo;Tarifa Día',
-            'E001;Mezcladora 1 bulto;Propio;$ 45.000',
+            'Código;Equipo;Tipo;Tarifa Día;Unidad Alquiler',
+            'E001;Mezcladora 1 bulto;Propio;$ 45.000;m2',
         ]));
 
         $this->assertSame(1, $resultadoEquipos['creados']);
@@ -122,6 +122,7 @@ class ImportacionExcelTest extends TestCase
             'empresa_id' => $this->empresa->id,
             'codigo' => 'E001',
             'tarifa_dia' => 45000,
+            'unidad_alquiler' => 'm2',
         ]);
 
         $resultadoCargos = $this->importar('cargos_mo', implode("\n", [

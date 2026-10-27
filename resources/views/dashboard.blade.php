@@ -48,6 +48,48 @@
         @endforeach
     </div>
 
+    {{-- Avance de la obra más reciente --}}
+    @if ($proyectoAvance && $avance)
+        @php
+            $rAvance = $avance['resumen'];
+            $anchoAvance = max(0, min(100, (float) $rAvance['avance_financiero']));
+        @endphp
+        <div class="mt-6 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 sm:px-6">
+                <div>
+                    <p class="text-[11px] font-bold uppercase tracking-wider text-amber-600">Avance de obra</p>
+                    <h3 class="mt-0.5 font-semibold text-slate-900">{{ $proyectoAvance->nombre }}</h3>
+                    <p class="text-sm text-slate-500">Cantidades ejecutadas y valor ganado del proyecto más reciente.</p>
+                </div>
+                <a href="{{ route('proyectos.avance', $proyectoAvance) }}" wire:navigate
+                   class="text-sm font-semibold text-amber-600 transition hover:text-amber-700">Ver avance</a>
+            </div>
+            <div class="grid gap-5 px-5 py-4 sm:px-6 lg:grid-cols-[1.2fr_2fr_1fr]">
+                <div>
+                    <p class="text-xs font-medium text-slate-500">Avance financiero</p>
+                    <p class="mt-1 text-3xl font-bold tracking-tight text-slate-900">{{ number_format((float) $rAvance['avance_financiero'], 1, ',', '.') }}<span class="text-base text-slate-400">%</span></p>
+                    <p class="mt-1 text-xs text-slate-500">{{ '$ '.number_format((float) $rAvance['ejecutado'], 2, ',', '.') }} de {{ '$ '.number_format((float) $rAvance['plan'], 2, ',', '.') }}</p>
+                </div>
+                <div class="flex flex-col justify-center">
+                    <div class="h-2.5 overflow-hidden rounded-full bg-slate-100">
+                        <div class="h-full rounded-full bg-amber-400" style="width: {{ $anchoAvance }}%"></div>
+                    </div>
+                    <div class="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-500">
+                        <span>Avance físico: <strong class="text-slate-800">{{ $rAvance['avance_fisico'] === null ? '— (unidades mixtas)' : number_format((float) $rAvance['avance_fisico'], 1, ',', '.').' %' }}</strong></span>
+                        <span>Ítems terminados: <strong class="text-slate-800">{{ $rAvance['items_terminados'] }} de {{ $rAvance['items'] }}</strong></span>
+                    </div>
+                </div>
+                <div class="flex items-center lg:justify-end">
+                    <a href="{{ route('proyectos.avance', $proyectoAvance) }}" wire:navigate
+                       class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                        Abrir avance
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    @endif
+
     {{-- Proyectos recientes + configuración --}}
     <div class="mt-6 grid gap-4 lg:grid-cols-3">
         {{-- Proyectos recientes --}}

@@ -1,27 +1,40 @@
+<p align="center">
+  <img src="public/logo-obraos.svg" alt="ObraOS · Sistema de obra" width="320">
+</p>
+
 # ObraOS
 
 **ObraOS** es una aplicación web para constructoras y presupuestistas que centraliza la **elaboración de presupuestos de obra** con memoria de cálculo, análisis de precios unitarios (APU) y catálogos de costos, todo aislado por empresa (multi-tenant).
 
 El sistema reproduce las fórmulas de la hoja de cálculo tradicional de presupuestos ("PRESUPUESTO GENERAL", "MEMORIA DE CALCULO", etc.) y permite **exportar el libro completo a Excel** con el mismo formato que usa el usuario.
 
+### Identidad visual
+
+El isotipo combina la **O** de ObraOS con un chevron de avance, sobre un fondo slate y acentos ámbar. Los recursos reutilizables están en:
+
+- `public/logo-obraos.svg` y `public/logo-obraos-dark.svg`: logo horizontal para fondos claros y oscuros.
+- `public/logo-obraos-mark.svg`: isotipo cuadrado.
+- `public/favicon.svg`, `public/favicon.ico` y `public/apple-touch-icon.png`: favicon y acceso directo.
+- `resources/views/components/brand/`: componentes Blade `x-brand.logo` y `x-brand.mark`.
+
 ---
 
 ## 🌿 Rama de trabajo
 
 > **Importante:** la rama `main` está estable y funcionando. **No se toca ni se mezcla.**
-> Todo el trabajo de Docker y documentación vive únicamente en la rama **`feature/docker`**, que se mantiene separada de `main`.
+> Todo el trabajo vive en ramas `feature`. La rama de esta entrega es **`feature/etapas-avance`**, creada desde `feature/docker` y separada de `main`.
 
 ```bash
-git checkout feature/docker
+git checkout feature/etapas-avance
 ```
 
-Esta rama se sube a `origin` para que el equipo la pruebe, pero **no se fusiona con `main`**. Si en el futuro se decide integrar, se hará de forma explícita y revisada.
+La rama se sube a `origin` para que el equipo la pruebe, pero **no se fusiona con `main`**. Si en el futuro se decide integrar, se hará de forma explícita y revisada.
 
 ---
 
 ## ✨ Funcionalidades
 
-- **Autenticación y registro por empresa**: cada empresa crea su cuenta y sus catálogos quedan aislados del resto.
+- **Acceso por invitación y super-admin de plataforma**: el registro público está deshabilitado; un super-admin crea empresas, propietarios y usuarios desde `/admin`, y cada empresa mantiene sus catálogos aislados del resto.
 - **Dashboard** con KPIs reales de la empresa (proyectos, APUs, materiales, equipos, mano de obra, proveedores), proyectos recientes y configuración del AIU.
 - **Catálogos de costos**:
   - Proveedores
@@ -30,8 +43,9 @@ Esta rama se sube a `origin` para que el equipo la pruebe, pero **no se fusiona 
   - Mano de obra (cargos, jornal, prestaciones)
 - **Importación masiva desde Excel**: carga o actualiza cualquiera de los 4 catálogos desde `.xlsx`, `.xls` o `.csv`, con plantilla descargable y reporte de creados, actualizados y errores por fila.
 - **APUs (Análisis de Precios Unitarios)**: composición de un precio unitario a partir de materiales, mano de obra y equipos, con rendimiento y desperdicio.
-- **Proyectos / Presupuestos**: editor con capítulos e ítems, cantidades, duración y cálculo automático de AIU.
-- **Exportación a Excel** (`.xlsx`) con múltiples hojas: `LISTA DE PRECIOS`, `ALQUILER DE EQUIPOS`, `RENDIMIENTO`, una hoja por APU, `MEMORIA DE CALCULO`, `PRESUPUESTO GENERAL`, `TABLA DE TAREAS` y `EJE UNIVERSAL`.
+- **Proyectos / Presupuestos**: editor con capítulos e ítems, cantidades, duración, subtotales por capítulo y cálculo automático de AIU e IVA sobre la utilidad.
+- **Etapas y avance de obra**: agrupa capítulos en etapas y registra cantidades ejecutadas por ítem. Calcula valor ganado, avance financiero, avance físico (solo dentro de una misma unidad) y muestra barras en el editor, la vista **Avance** y el dashboard.
+- **Exportación a Excel** (`.xlsx`) con múltiples hojas: `LISTA DE PRECIOS`, `ALQUILER DE EQUIPOS`, `RENDIMIENTO`, una hoja por APU, `MEMORIA DE CALCULO`, `PRESUPUESTO GENERAL`, `AVANCE DE OBRA`, `TABLA DE TAREAS` y `EJE UNIVERSAL`.
 
 ---
 
@@ -74,7 +88,7 @@ Es la forma más rápida de correr ObraOS y funciona igual en **Windows, macOS y
 ```bash
 git clone https://github.com/jmdiaz23/obras.git obras
 cd obras
-git checkout feature/docker
+git checkout feature/etapas-avance
 docker compose up -d --build
 ```
 
@@ -104,6 +118,7 @@ El seeder es idempotente: se puede volver a ejecutar sin duplicar ni borrar dato
 - 3 proveedores, 47 materiales, 6 equipos y 2 cargos de mano de obra.
 - 3 APUs: concreto 3000 psi (`APU-001`, $348.671,72/m³), muro de bloque (`APU-002`) y piso cerámico (`APU-003`).
 - Proyecto **Casa lote 12, Altos de la Sabana** (Barranquilla), con capítulos *Obra gruesa* y *Acabados*, AIU 10/5/10, subtotal **$57.491.848,24** y total **$71.864.810,29**.
+- Dos etapas demo (*Obra gris* y *Acabados*) y cantidades ejecutadas de ejemplo; el avance se puede consultar en el editor, en la vista **Avance** y en el dashboard.
 
 ### Puertos
 
@@ -235,7 +250,21 @@ Si ejecutaste `DemoObraSeeder`:
 | Contraseña | `password123` |
 | Rol | `propietario` |
 
-También puedes **registrarte** desde `/registro` para crear una empresa nueva desde cero.
+El seeder también crea una cuenta de plataforma:
+
+| Campo | Valor |
+| --- | --- |
+| Correo | `super@obras.com` |
+| Contraseña | `password123` |
+| Acceso | `/admin` (panel de plataforma) |
+
+El **registro público está deshabilitado**. Para crear empresas y usuarios usa el panel `/admin`. En un ambiente real, crea el primer super-admin con:
+
+```bash
+php artisan obraos:superadmin correo@tuempresa.com --name="Administrador de plataforma"
+```
+
+El comando pide la contraseña de forma interactiva y también puede recibirla con `--password=`.
 
 ---
 
@@ -263,9 +292,12 @@ También puedes **registrarte** desde `/registro` para crear una empresa nueva d
 
 | Ruta | Descripción |
 | --- | --- |
-| `/` | Redirige al dashboard o al login |
-| `/login`, `/registro` | Autenticación |
-| `/dashboard` | Panel con KPIs y proyectos recientes |
+| `/` | Redirige al panel correspondiente o al login |
+| `/login` | Inicio de sesión (sin registro público) |
+| `/admin` | Panel global del super-admin |
+| `/admin/empresas` | Alta y edición de empresas |
+| `/admin/usuarios` | Alta de usuarios por empresa |
+| `/dashboard` | Panel de la empresa con KPIs y proyectos recientes |
 | `/catalogos/proveedores` | Catálogo de proveedores |
 | `/catalogos/materiales` | Catálogo de materiales |
 | `/catalogos/equipos` | Catálogo de equipos |
@@ -292,8 +324,11 @@ Subtotal       = Σ vr_total                        (= costo directo del proyect
 Administración = subtotal × pct_administracion %
 Imprevistos    = subtotal × pct_imprevistos %
 Utilidad       = subtotal × pct_utilidad %
-TOTAL          = subtotal + administración + imprevistos + utilidad
+IVA utilidad   = utilidad × pct_iva_utilidad %      (opcional, 0 % por defecto)
+TOTAL          = subtotal + administración + imprevistos + utilidad + IVA
 ```
+
+Cada capítulo muestra su **subtotal** (suma de sus ítems `1.x`) en el editor y en el Excel. El IVA se calcula **solo sobre la utilidad**, como en la hoja del ingeniero.
 
 Los porcentajes de AIU se toman por proyecto (con los valores por defecto de la empresa). El costo de mano de obra incluye prestaciones según `pct_prestaciones` de la empresa (`app/Services/ApuCalculator.php`).
 
@@ -330,9 +365,13 @@ Las prestaciones salen del porcentaje configurado en la empresa (ej. 85 %), no s
 
 ### 4. Equipos (C)
 
+La unidad de alquiler se elige por línea:
+
 ```
-tarifa_hora = tarifa_día / 8
-total       = tarifa_hora × horas_por_unidad
+hr        -> valor_unitario = tarifa_día / 8
+día       -> valor_unitario = tarifa_día
+m² / m³ / und -> valor_unitario digitado (p. ej. formaleta prorrateada por m²)
+total     = valor_unitario × cantidad
 ```
 
 Además, las **herramientas menores** se calculan como un porcentaje de la mano de obra (10 % por defecto):
@@ -400,6 +439,8 @@ Todos los modelos de negocio (`Proyecto`, `Apu`, `Material`, `Equipo`, `CargoMo`
 
 Esto garantiza que una empresa nunca vea datos de otra, sin filtros manuales en cada consulta.
 
+El **super-admin** es la excepción controlada: no pertenece a una empresa, entra a `/admin` y sus consultas globales omiten el scope. Las rutas de trabajo (`/dashboard`, `/catalogos`, `/apus`, `/proyectos`) están protegidas por el middleware `empresa`, que lo redirige a su panel y evita que opere dentro de una empresa.
+
 ---
 
 ## 🧪 Tests
@@ -410,7 +451,7 @@ php artisan test
 composer test
 ```
 
-La suite cubre autenticación, catálogos, APUs, cálculo de presupuestos, exportación a Excel y aislamiento entre empresas.
+La suite cubre autenticación, super-admin de plataforma, alta de empresas y usuarios, catálogos, APUs, cálculo de presupuestos, etapas y avance, exportación a Excel y aislamiento entre empresas.
 
 Formatear el código con Laravel Pint:
 
@@ -424,12 +465,14 @@ Formatear el código con Laravel Pint:
 
 ```
 app/
+├── Console/Commands/CrearSuperAdmin.php     # Alta del primer super-admin
 ├── Http/Controllers/ExportController.php   # Descarga del .xlsx
-├── Livewire/                                # Componentes (Auth, Catalogos, Apus, Proyectos)
+├── Livewire/                                # Componentes (Auth, Admin, Catalogos, Apus, Proyectos)
 ├── Models/                                  # Eloquent + trait BelongsToEmpresa
 └── Services/
     ├── ApuCalculator.php                    # Costo de un APU
-    ├── PresupuestoService.php               # Cálculo del presupuesto y AIU
+    ├── PresupuestoService.php               # Cálculo del presupuesto, AIU y valor ganado
+    ├── AvanceService.php                    # Avance financiero/físico por etapa y capítulo
     └── ExcelExportService.php               # Generación del libro Excel
 
 database/
@@ -457,10 +500,10 @@ docker-compose.yml                           # Servicios app + web + db
 
 ## 🛣️ Próximas fases
 
-- Cronograma de obra.
+- Cronograma de obra y curva S (programado vs. ejecutado).
 - Órdenes de compra y control de ejecución.
-- Reportes de avance y comparativos presupuesto vs. real.
-- Importación/exportación masiva de catálogos.
+- Histórico de reportes de avance con fecha y usuario.
+- API `/api/v1` de lectura y portal de avance en Next.js.
 
 ---
 
@@ -470,7 +513,7 @@ docker-compose.yml                           # Servicios app + web + db
 
 El `docker-compose.yml` incluido sirve para demo y desarrollo. Para un servidor:
 
-1. Clona la rama `feature/docker` (o el resultado de una integración explícita y revisada).
+1. Clona la rama `feature/etapas-avance` (o el resultado de una integración explícita y revisada).
 2. Crea un archivo `.env` junto al compose con valores seguros (no uses los valores por defecto):
 
 ```dotenv

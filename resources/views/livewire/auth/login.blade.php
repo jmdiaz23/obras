@@ -36,8 +36,8 @@
         </button>
     </form>
 
-    <p class="mt-6 text-center text-sm text-slate-500">
-        ¿No tienes cuenta?
-        <a href="{{ route('register') }}" wire:navigate class="font-semibold text-amber-600 hover:text-amber-700">Registra tu empresa</a>
+    <p class="mt-6 text-center text-xs leading-5 text-slate-400">
+        El acceso es por invitación. Si necesitas una cuenta,
+        contacta al administrador de tu empresa.
     </p>
 </div>

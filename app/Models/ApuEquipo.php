@@ -14,14 +14,17 @@ class ApuEquipo extends Model
     protected $fillable = [
         'apu_id',
         'equipo_id',
-        'horas_por_unidad',
+        'unidad',
+        'cantidad',
+        'valor_unitario',
         'orden',
     ];
 
     protected function casts(): array
     {
         return [
-            'horas_por_unidad' => 'float',
+            'cantidad' => 'float',
+            'valor_unitario' => 'float',
             'orden' => 'integer',
         ];
     }

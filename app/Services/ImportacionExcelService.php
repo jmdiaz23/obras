@@ -450,6 +450,25 @@ class ImportacionExcelService
                 'tarifa_dia' => $tarifa,
             ];
 
+            if (($columnas['unidad_alquiler'] ?? null) !== null) {
+                $textoUnidad = $this->texto($fila[$columnas['unidad_alquiler']] ?? null);
+
+                if ($textoUnidad !== null) {
+                    $unidadAlquiler = $this->normalizarUnidadAlquiler($textoUnidad);
+
+                    if ($unidadAlquiler === null) {
+                        $errores[] = $this->error(
+                            $numeroFila,
+                            'La unidad de alquiler "'.$textoUnidad.'" no es válida. Usa: hr, dia, m2, m3, und.',
+                        );
+
+                        continue;
+                    }
+
+                    $datos['unidad_alquiler'] = $unidadAlquiler;
+                }
+            }
+
             $llave = mb_strtoupper(trim($codigo));
 
             try {
@@ -564,6 +583,7 @@ class ImportacionExcelService
                 'descripcion' => ['DESCRIPCION', 'DESCRIPCIÓN', 'NOMBRE', 'EQUIPO', 'DETALLE', 'MAQUINA', 'MÁQUINA'],
                 'tipo' => ['TIPO', 'CLASE', 'CATEGORIA', 'CATEGORÍA', 'PROPIEDAD'],
                 'tarifa_dia' => ['TARIFA DIA', 'TARIFA DÍA', 'TARIFA', 'VALOR DIA', 'VALOR DÍA', 'PRECIO', 'VALOR', 'ALQUILER', 'COSTO DIA', 'COSTO'],
+                'unidad_alquiler' => ['UNIDAD ALQUILER', 'UNIDAD DE ALQUILER', 'UND ALQUILER', 'UNIDAD', 'PERIODO', 'PERÍODO', 'TARIFA POR'],
                 'proveedor' => $proveedor,
             ],
             'cargos_mo' => [
@@ -663,6 +683,20 @@ class ImportacionExcelService
             'DIA' => 'DIA', 'DIAS' => 'DIA',
             'HORA' => 'HORA', 'HORAS' => 'HORA', 'HR' => 'HORA', 'H' => 'HORA',
             'MES' => 'MES', 'MESES' => 'MES',
+        ];
+
+        return $mapa[$this->normalizar($unidad)] ?? null;
+    }
+
+    private function normalizarUnidadAlquiler(string $unidad): ?string
+    {
+        $mapa = [
+            'HR' => 'hr', 'HORA' => 'hr', 'HORAS' => 'hr', 'H' => 'hr',
+            'DIA' => 'dia', 'DIAS' => 'dia', 'D' => 'dia', 'JORNAL' => 'dia',
+            'M2' => 'm2', 'METRO CUADRADO' => 'm2', 'METROS CUADRADOS' => 'm2', 'MTS2' => 'm2',
+            'M3' => 'm3', 'METRO CUBICO' => 'm3', 'METROS CUBICOS' => 'm3', 'MTS3' => 'm3',
+            'UND' => 'und', 'UN' => 'und', 'UNID' => 'und', 'UNIDAD' => 'und',
+            'UNIDADES' => 'und', 'GL' => 'und', 'GLOBAL' => 'und',
         ];
 
         return $mapa[$this->normalizar($unidad)] ?? null;

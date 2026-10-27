@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\Auth\Login;
 use Tests\TestCase;
 
 class ExampleTest extends TestCase
@@ -11,17 +12,16 @@ class ExampleTest extends TestCase
         $this->get('/')->assertRedirect(route('login'));
     }
 
-    public function test_el_login_carga_correctamente(): void
+    public function test_el_login_carga_correctamente_sin_opcion_de_registro(): void
     {
         $this->get(route('login'))
             ->assertOk()
-            ->assertSeeLivewire(\App\Livewire\Auth\Login::class);
+            ->assertSeeLivewire(Login::class)
+            ->assertDontSee('Registra tu empresa');
     }
 
-    public function test_el_registro_carga_correctamente(): void
+    public function test_el_registro_publico_esta_deshabilitado(): void
     {
-        $this->get(route('register'))
-            ->assertOk()
-            ->assertSeeLivewire(\App\Livewire\Auth\Register::class);
+        $this->get('/registro')->assertNotFound();
     }
 }

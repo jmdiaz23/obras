@@ -17,6 +17,7 @@ class Equipo extends Model
         'descripcion',
         'tipo',
         'tarifa_dia',
+        'unidad_alquiler',
     ];
 
     protected function casts(): array

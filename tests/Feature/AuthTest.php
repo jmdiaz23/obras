@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Livewire\Auth\Login;
-use App\Livewire\Auth\Register;
 use App\Models\Empresa;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -27,56 +26,16 @@ class AuthTest extends TestCase
         ]);
     }
 
-    public function test_registra_una_empresa_con_su_propietario_e_inicia_la_sesion(): void
+    private function crearSuperAdmin(): User
     {
-        Livewire::test(Register::class)
-            ->set('nombre_empresa', 'Constructora Jesu S.A.S.')
-            ->set('nit', '900123456-7')
-            ->set('name', 'Jesu Ingeniero')
-            ->set('email', 'jesu@obras.com')
-            ->set('password', 'password123')
-            ->set('password_confirmation', 'password123')
-            ->call('register')
-            ->assertHasNoErrors()
-            ->assertRedirect('/dashboard');
-
-        $this->assertSame(1, Empresa::count());
-        $this->assertSame(1, User::count());
-
-        $user = User::first();
-
-        $this->assertSame(User::ROLE_PROPIETARIO, $user->role);
-        $this->assertSame('Constructora Jesu S.A.S.', $user->empresa->nombre);
-        $this->assertTrue(Auth::check());
-    }
-
-    public function test_valida_los_datos_del_registro(): void
-    {
-        Livewire::test(Register::class)
-            ->set('nombre_empresa', '')
-            ->set('name', '')
-            ->set('email', 'correo-invalido')
-            ->set('password', '123')
-            ->call('register')
-            ->assertHasErrors(['nombre_empresa', 'name', 'email', 'password']);
-
-        $this->assertSame(0, Empresa::count());
-    }
-
-    public function test_rechaza_correos_ya_registrados(): void
-    {
-        $existente = $this->crearUsuarioDePrueba();
-
-        Livewire::test(Register::class)
-            ->set('nombre_empresa', 'Otra Empresa')
-            ->set('name', 'Otro Usuario')
-            ->set('email', $existente->email)
-            ->set('password', 'password123')
-            ->set('password_confirmation', 'password123')
-            ->call('register')
-            ->assertHasErrors(['email']);
-
-        $this->assertSame(1, Empresa::count());
+        return User::query()->create([
+            'empresa_id' => null,
+            'name' => 'Super Administrador',
+            'email' => 'super@test.com',
+            'password' => 'password123',
+            'role' => User::ROLE_SUPER_ADMIN,
+            'es_super_admin' => true,
+        ]);
     }
 
     public function test_inicia_sesion_con_credenciales_correctas(): void
@@ -91,6 +50,21 @@ class AuthTest extends TestCase
             ->assertRedirect('/dashboard');
 
         $this->assertTrue(Auth::check());
+    }
+
+    public function test_el_super_admin_inicia_sesion_en_el_panel_de_plataforma(): void
+    {
+        $superAdmin = $this->crearSuperAdmin();
+
+        Livewire::test(Login::class)
+            ->set('email', $superAdmin->email)
+            ->set('password', 'password123')
+            ->call('authenticate')
+            ->assertHasNoErrors()
+            ->assertRedirect(route('admin.dashboard'));
+
+        $this->assertTrue(Auth::check());
+        $this->assertTrue(auth()->user()->esSuperAdmin());
     }
 
     public function test_rechaza_credenciales_incorrectas(): void

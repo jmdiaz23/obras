@@ -69,7 +69,7 @@ class ApuTest extends TestCase
             $apu->materiales()->create(['material_id' => $materialId, 'cantidad' => $cantidad, 'orden' => $i + 1]);
         }
         $apu->manoObra()->create(['cargo_id' => $ayudante->id, 'dias_por_unidad' => 0.89, 'orden' => 1]);
-        $apu->equipos()->create(['equipo_id' => $trompo->id, 'horas_por_unidad' => 0.5, 'orden' => 1]);
+        $apu->equipos()->create(['equipo_id' => $trompo->id, 'unidad' => 'hr', 'cantidad' => 0.5, 'orden' => 1]);
 
         $totales = ApuCalculator::calcular($apu->fresh(['materiales.material', 'manoObra.cargo', 'equipos.equipo', 'empresa']))['totales'];
 
@@ -81,6 +81,106 @@ class ApuTest extends TestCase
 
         // El costo directo de la hoja es 348.671,72 (diferencia máxima: redondeo a centavos)
         $this->assertEqualsWithDelta(348671.72, $totales['costo_directo'], 0.02);
+    }
+
+    public function test_equipo_por_unidad_de_obra_prorratea_el_alquiler(): void
+    {
+        $formaleta = Equipo::create([
+            'codigo' => 'E7',
+            'descripcion' => 'Formaleta metálica',
+            'tarifa_dia' => 0,
+            'unidad_alquiler' => 'm2',
+        ]);
+
+        $apu = Apu::create([
+            'descripcion' => 'MURO EN CONCRETO',
+            'unidad' => 'M2',
+            'pct_herramientas' => 0,
+        ]);
+
+        $apu->equipos()->create([
+            'equipo_id' => $formaleta->id,
+            'unidad' => 'm2',
+            'cantidad' => 1.5,
+            'valor_unitario' => 3500,
+            'orden' => 1,
+        ]);
+
+        $calculo = ApuCalculator::calcular($apu->fresh(['materiales.material', 'manoObra.cargo', 'equipos.equipo', 'empresa']));
+
+        $this->assertSame('m2', $calculo['equipos'][0]['unidad']);
+        $this->assertEqualsWithDelta(5250.0, $calculo['equipos'][0]['total'], 0.0001);
+        $this->assertEqualsWithDelta(5250.0, $calculo['totales']['equipos'], 0.0001);
+    }
+
+    public function test_equipo_por_dia_usa_la_tarifa_del_catalogo(): void
+    {
+        $andamio = Equipo::create([
+            'codigo' => 'E8',
+            'descripcion' => 'Andamio',
+            'tarifa_dia' => 20000,
+            'unidad_alquiler' => 'dia',
+        ]);
+
+        $apu = Apu::create([
+            'descripcion' => 'FACHADA',
+            'unidad' => 'M2',
+            'pct_herramientas' => 0,
+        ]);
+
+        $apu->equipos()->create([
+            'equipo_id' => $andamio->id,
+            'unidad' => 'dia',
+            'cantidad' => 2.5,
+            'orden' => 1,
+        ]);
+
+        $calculo = ApuCalculator::calcular($apu->fresh(['materiales.material', 'manoObra.cargo', 'equipos.equipo', 'empresa']));
+
+        $this->assertEqualsWithDelta(20000.0, $calculo['equipos'][0]['valor_unitario'], 0.0001);
+        $this->assertEqualsWithDelta(50000.0, $calculo['totales']['equipos'], 0.0001);
+    }
+
+    public function test_editor_hereda_la_unidad_de_alquiler_del_catalogo_y_permite_cambiarla(): void
+    {
+        $formaleta = Equipo::create([
+            'codigo' => 'E9',
+            'descripcion' => 'Formaleta metálica',
+            'tarifa_dia' => 24000,
+            'unidad_alquiler' => 'm2',
+        ]);
+
+        $apu = Apu::create(['descripcion' => 'MURO', 'unidad' => 'M2', 'pct_herramientas' => 0]);
+
+        $componente = Livewire::test(ApuEditor::class, ['apu' => $apu])
+            ->set('selEquipo', $formaleta->id)
+            ->call('agregarEquipo');
+
+        $linea = $apu->equipos()->first();
+
+        $this->assertSame('m2', $linea->unidad);
+
+        $componente
+            ->set("linE.{$linea->id}.valor_unitario", '4200')
+            ->set("linE.{$linea->id}.cantidad", '3');
+
+        $linea->refresh();
+
+        $this->assertEqualsWithDelta(4200.0, $linea->valor_unitario, 0.0001);
+        $this->assertEqualsWithDelta(3.0, $linea->cantidad, 0.0001);
+
+        // Al pasar a hora, el valor unitario se deriva de la tarifa día y se descarta el manual.
+        $componente->set("linE.{$linea->id}.unidad", 'hr');
+
+        $linea->refresh();
+
+        $this->assertSame('hr', $linea->unidad);
+        $this->assertNull($linea->valor_unitario);
+
+        $calculo = ApuCalculator::calcular($apu->fresh(['materiales.material', 'manoObra.cargo', 'equipos.equipo', 'empresa']));
+
+        $this->assertEqualsWithDelta(3000.0, $calculo['equipos'][0]['valor_unitario'], 0.0001);
+        $this->assertEqualsWithDelta(9000.0, $calculo['totales']['equipos'], 0.0001);
     }
 
     public function test_crea_apu_desde_la_lista_y_redirige_al_editor(): void

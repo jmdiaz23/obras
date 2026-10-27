@@ -21,9 +21,10 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
  *   3. RENDIMIENTO             - cuadrilla y rendimiento de los APUs del proyecto
  *   4. APU XX...               - una hoja por APU (secciones A/B/C + costo directo)
  *   5. MEMORIA DE CALCULO      - ítems del proyecto con cantidades y vr. unitario
- *   6. PRESUPUESTO GENERAL     - ítems + resumen con AIU (Adm/Imp/Utilidad/Total)
- *   7. TABLA DE TAREAS         - programación (se llena en el cronograma)
- *   8. EJE UNIVERSAL           - referencia de ejes (manual)
+ *   6. PRESUPUESTO GENERAL     - ítems + resumen con AIU (Adm/Imp/Utilidad/Total) y avance
+ *   7. AVANCE DE OBRA          - valor ganado y avance por etapa/capítulo
+ *   8. TABLA DE TAREAS         - programación (se llena en el cronograma)
+ *   9. EJE UNIVERSAL           - referencia de ejes (manual)
  */
 class ExcelExportService
 {
@@ -46,6 +47,7 @@ class ExcelExportService
         $this->hojasApu($spreadsheet, $proyecto);
         $this->hojaMemoriaDeCalculo($spreadsheet, $proyecto);
         $this->hojaPresupuestoGeneral($spreadsheet, $proyecto);
+        $this->hojaAvanceDeObra($spreadsheet, $proyecto);
         $this->hojaTablaDeTareas($spreadsheet, $proyecto);
         $this->hojaEjeUniversal($spreadsheet);
 
@@ -92,9 +94,9 @@ class ExcelExportService
         $sheet = $spreadsheet->createSheet();
         $sheet->setTitle('ALQUILER DE EQUIPOS');
 
-        $this->tituloHoja($sheet, 'ALQUILER DE EQUIPOS', 6);
+        $this->tituloHoja($sheet, 'ALQUILER DE EQUIPOS', 7);
 
-        $this->encabezados($sheet, 2, ['ITEM', 'CODIGO', 'DESCRIPCION', 'TIPO', 'PROVEEDOR', 'TARIFA DIA']);
+        $this->encabezados($sheet, 2, ['ITEM', 'CODIGO', 'DESCRIPCION', 'TIPO', 'PROVEEDOR', 'TARIFA DIA', 'UNIDAD ALQUILER']);
 
         $equipos = Equipo::query()->with('proveedor')->orderBy('codigo')->get();
 
@@ -106,12 +108,13 @@ class ExcelExportService
             $sheet->setCellValue("D{$fila}", $e->tipo);
             $sheet->setCellValue("E{$fila}", $e->proveedor?->nombre ?? '-');
             $sheet->setCellValue("F{$fila}", $e->tarifa_dia);
-            $this->estiloFila($sheet, $fila, 'A2:F2');
+            $sheet->setCellValue("G{$fila}", $e->unidad_alquiler);
+            $this->estiloFila($sheet, $fila, 'A2:G2');
             $fila++;
         }
 
-        $this->bordes($sheet, "A2:F{$fila}");
-        $this->anchuras($sheet, ['A' => 7, 'B' => 14, 'C' => 52, 'D' => 22, 'E' => 26, 'F' => 15]);
+        $this->bordes($sheet, "A2:G{$fila}");
+        $this->anchuras($sheet, ['A' => 7, 'B' => 14, 'C' => 52, 'D' => 22, 'E' => 26, 'F' => 15, 'G' => 18]);
         $this->money($sheet, "F3:F{$fila}", self::MONEDA2);
         $sheet->getStyle("A3:A{$fila}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
     }
@@ -257,41 +260,41 @@ class ExcelExportService
         $this->estiloSeccion($sheet, "A{$fila}:G{$fila}");
         $fila++;
 
-        $this->encabezados($sheet, $fila, ['#', 'DESCRIPCION', 'HORAS/UND', 'V. HORA', 'V. TOTAL', '', '']);
+        $this->encabezados($sheet, $fila, ['#', 'DESCRIPCION', 'UNIDAD', 'CANTIDAD', 'V. UNITARIO', 'V. TOTAL', '']);
 
         $inicio = $fila + 1;
         foreach ($calculo['equipos'] as $i => $e) {
             $fila++;
             $sheet->setCellValue("A{$fila}", $i + 1);
             $sheet->setCellValue("B{$fila}", $e['descripcion']);
-            $sheet->setCellValue("C{$fila}", $e['horas_por_unidad']);
-            $sheet->setCellValue("D{$fila}", $e['tarifa_hora']);
-            $sheet->setCellValue("E{$fila}", $e['total']);
+            $sheet->setCellValue("C{$fila}", $e['unidad']);
+            $sheet->setCellValue("D{$fila}", $e['cantidad']);
+            $sheet->setCellValue("E{$fila}", $e['valor_unitario']);
+            $sheet->setCellValue("F{$fila}", $e['total']);
             $this->estiloFila($sheet, $fila, "A{$fila}:G{$fila}");
         }
 
         if ($inicio <= $fila) {
-            $this->money($sheet, "D{$inicio}:D{$fila}", self::MONEDA4);
-            $this->money($sheet, "E{$inicio}:E{$fila}", self::MONEDA4);
+            $this->money($sheet, "E{$inicio}:F{$fila}", self::MONEDA4);
         }
 
         $fila++;
         $sheet->setCellValue("A{$fila}", 'SUBTOTAL C - EQUIPOS');
-        $sheet->setCellValue("E{$fila}", $calculo['totales']['equipos'] - $calculo['totales']['herramientas']);
+        $sheet->setCellValue("F{$fila}", $calculo['totales']['equipos'] - $calculo['totales']['herramientas']);
         $this->estiloSubtotal($sheet, "A{$fila}:G{$fila}");
-        $this->money($sheet, "E{$fila}", self::MONEDA4);
+        $this->money($sheet, "F{$fila}", self::MONEDA4);
 
         $fila++;
         $sheet->setCellValue("A{$fila}", 'HERRAMIENTAS ('.$pctHerramientas.'% de mano de obra)');
-        $sheet->setCellValue("E{$fila}", $calculo['totales']['herramientas']);
+        $sheet->setCellValue("F{$fila}", $calculo['totales']['herramientas']);
         $this->estiloSubtotal($sheet, "A{$fila}:G{$fila}");
-        $this->money($sheet, "E{$fila}", self::MONEDA4);
+        $this->money($sheet, "F{$fila}", self::MONEDA4);
 
         $fila++;
         $sheet->setCellValue("A{$fila}", 'SUBTOTAL C - INCL. HERRAMIENTAS');
-        $sheet->setCellValue("E{$fila}", $calculo['totales']['equipos']);
+        $sheet->setCellValue("F{$fila}", $calculo['totales']['equipos']);
         $this->estiloSubtotal($sheet, "A{$fila}:G{$fila}");
-        $this->money($sheet, "E{$fila}", self::MONEDA4);
+        $this->money($sheet, "F{$fila}", self::MONEDA4);
 
         return $fila + 1;
     }
@@ -327,6 +330,7 @@ class ExcelExportService
             if ($linea['es_capitulo']) {
                 $sheet->setCellValue("A{$fila}", $linea['item']);
                 $sheet->setCellValue("B{$fila}", $linea['descripcion']);
+                $sheet->setCellValue("F{$fila}", $linea['subtotal_capitulo'] ?? 0);
                 $this->estiloSeccion($sheet, "A{$fila}:G{$fila}");
                 $fila++;
 
@@ -357,7 +361,7 @@ class ExcelExportService
         $sheet = $spreadsheet->createSheet();
         $sheet->setTitle('PRESUPUESTO GENERAL');
 
-        $this->tituloHoja($sheet, 'PRESUPUESTO GENERAL', 7);
+        $this->tituloHoja($sheet, 'PRESUPUESTO GENERAL', 10);
 
         $empresa = $proyecto->empresa;
 
@@ -365,17 +369,32 @@ class ExcelExportService
         $sheet->setCellValue('A3', 'PROYECTO: '.strtoupper($proyecto->nombre));
         $sheet->setCellValue('A4', 'CLIENTE: '.($proyecto->cliente ?: '-').'  ·  UBICACION: '.($proyecto->ubicacion ?: '-'));
 
-        $this->encabezados($sheet, 6, ['ITEM', 'DESCRIPCION', 'UND', 'CANTIDAD', 'VR. UNITARIO', 'VR. TOTAL', 'DURACION (DIAS)']);
+        $this->encabezados($sheet, 6, ['ITEM', 'DESCRIPCION', 'UND', 'CANTIDAD', 'VR. UNITARIO', 'VR. TOTAL', 'DURACION (DIAS)', 'EJECUTADO', 'VR. EJECUTADO', 'AVANCE %']);
 
         $calculo = PresupuestoService::calcular($proyecto);
 
         $fila = 7;
+        $capituloPendiente = null;
+
         foreach ($calculo['lineas'] as $linea) {
             if ($linea['es_capitulo']) {
-                $sheet->mergeCells("B{$fila}:G{$fila}");
+                if ($capituloPendiente !== null) {
+                    $fila = $this->filaSubtotalCapitulo($sheet, $fila, $capituloPendiente);
+                }
+
+                $capituloPendiente = [
+                    'item' => $linea['item'],
+                    'subtotal' => $linea['subtotal_capitulo'] ?? 0,
+                    'ejecutado' => $linea['vr_ejecutado'] ?? 0,
+                    'avance' => $linea['avance'] ?? 0,
+                ];
+
+                $sheet->mergeCells("B{$fila}:H{$fila}");
                 $sheet->setCellValue("A{$fila}", $linea['item']);
                 $sheet->setCellValue("B{$fila}", $linea['descripcion']);
-                $this->estiloSeccion($sheet, "A{$fila}:G{$fila}");
+                $sheet->setCellValue("I{$fila}", $linea['vr_ejecutado'] ?? 0);
+                $sheet->setCellValue("J{$fila}", $linea['avance'] ?? 0);
+                $this->estiloSeccion($sheet, "A{$fila}:J{$fila}");
                 $fila++;
 
                 continue;
@@ -388,42 +407,166 @@ class ExcelExportService
             $sheet->setCellValue("E{$fila}", $linea['vr_unitario']);
             $sheet->setCellValue("F{$fila}", $linea['vr_total']);
             $sheet->setCellValue("G{$fila}", $linea['duracion']);
-            $this->estiloFila($sheet, $fila, 'A6:G6');
+            $sheet->setCellValue("H{$fila}", $linea['cantidad_ejecutada'] ?? 0);
+            $sheet->setCellValue("I{$fila}", $linea['vr_ejecutado'] ?? 0);
+            $sheet->setCellValue("J{$fila}", $linea['avance'] ?? 0);
+            $this->estiloFila($sheet, $fila, 'A6:J6');
             $fila++;
         }
 
-        $this->bordes($sheet, "A6:G{$fila}");
+        if ($capituloPendiente !== null) {
+            $fila = $this->filaSubtotalCapitulo($sheet, $fila, $capituloPendiente);
+        }
+
+        $this->bordes($sheet, "A6:J{$fila}");
 
         $fila++;
         $sheet->setCellValue("A{$fila}", 'SUBTOTAL (costo directo)');
         $sheet->setCellValue("F{$fila}", $calculo['resumen']['subtotal']);
-        $this->estiloResumen($sheet, "A{$fila}:F{$fila}");
+        $sheet->setCellValue("I{$fila}", $calculo['resumen']['ejecutado']);
+        $sheet->setCellValue("J{$fila}", $calculo['resumen']['avance_financiero']);
+        $this->estiloResumen($sheet, "A{$fila}:J{$fila}");
         $fila++;
 
         $sheet->setCellValue("A{$fila}", 'ADMINISTRACION '.$proyecto->pct_administracion.'%');
         $sheet->setCellValue("F{$fila}", $calculo['resumen']['administracion']);
-        $this->estiloFila($sheet, $fila, 'A6:G6');
+        $this->estiloFila($sheet, $fila, 'A6:J6');
         $fila++;
 
         $sheet->setCellValue("A{$fila}", 'IMPREVISTOS '.$proyecto->pct_imprevistos.'%');
         $sheet->setCellValue("F{$fila}", $calculo['resumen']['imprevistos']);
-        $this->estiloFila($sheet, $fila, 'A6:G6');
+        $this->estiloFila($sheet, $fila, 'A6:J6');
         $fila++;
 
         $sheet->setCellValue("A{$fila}", 'UTILIDAD '.$proyecto->pct_utilidad.'%');
         $sheet->setCellValue("F{$fila}", $calculo['resumen']['utilidad']);
-        $this->estiloFila($sheet, $fila, 'A6:G6');
+        $this->estiloFila($sheet, $fila, 'A6:J6');
         $fila++;
+
+        if ($proyecto->pct_iva_utilidad > 0) {
+            $sheet->setCellValue("A{$fila}", 'IVA SOBRE UTILIDAD '.$proyecto->pct_iva_utilidad.'%');
+            $sheet->setCellValue("F{$fila}", $calculo['resumen']['iva_utilidad']);
+            $this->estiloFila($sheet, $fila, 'A6:J6');
+            $fila++;
+        }
 
         $sheet->setCellValue("A{$fila}", 'TOTAL VENTA');
         $sheet->setCellValue("F{$fila}", $calculo['resumen']['total']);
-        $this->estiloResumen($sheet, "A{$fila}:F{$fila}");
-        $this->money($sheet, "F6:F{$fila}", self::MONEDA2);
+        $this->estiloResumen($sheet, "A{$fila}:J{$fila}");
 
-        $this->anchuras($sheet, ['A' => 10, 'B' => 52, 'C' => 9, 'D' => 13, 'E' => 16, 'F' => 16, 'G' => 15]);
+        $this->anchuras($sheet, ['A' => 10, 'B' => 48, 'C' => 9, 'D' => 13, 'E' => 16, 'F' => 16, 'G' => 15, 'H' => 13, 'I' => 17, 'J' => 11]);
         $this->money($sheet, "E7:E{$fila}", self::MONEDA4);
+        $this->money($sheet, "F7:F{$fila}", self::MONEDA2);
+        $this->money($sheet, "I7:I{$fila}", self::MONEDA2);
         $sheet->getStyle("D7:D{$fila}")->getNumberFormat()->setFormatCode('#,##0.0000');
         $sheet->getStyle("G7:G{$fila}")->getNumberFormat()->setFormatCode('#,##0.0000');
+        $sheet->getStyle("H7:H{$fila}")->getNumberFormat()->setFormatCode('#,##0.0000');
+        $sheet->getStyle("J7:J{$fila}")->getNumberFormat()->setFormatCode('0.00"%"');
+    }
+
+    private function filaSubtotalCapitulo(Worksheet $sheet, int $fila, array $capitulo): int
+    {
+        $sheet->mergeCells("A{$fila}:E{$fila}");
+        $sheet->setCellValue("A{$fila}", 'SUBTOTAL CAPITULO '.$capitulo['item']);
+        $sheet->setCellValue("F{$fila}", $capitulo['subtotal']);
+        $sheet->setCellValue("I{$fila}", $capitulo['ejecutado']);
+        $sheet->setCellValue("J{$fila}", $capitulo['avance']);
+        $this->estiloSubtotal($sheet, "A{$fila}:J{$fila}");
+        $this->money($sheet, "F{$fila}", self::MONEDA2);
+        $this->money($sheet, "I{$fila}", self::MONEDA2);
+
+        return $fila + 1;
+    }
+
+    private function hojaAvanceDeObra(Spreadsheet $spreadsheet, Proyecto $proyecto): void
+    {
+        $sheet = $spreadsheet->createSheet();
+        $sheet->setTitle('AVANCE DE OBRA');
+
+        $this->tituloHoja($sheet, 'AVANCE DE OBRA', 8);
+
+        $avance = AvanceService::calcular($proyecto);
+        $resumen = $avance['resumen'];
+
+        $sheet->setCellValue('A2', 'PROYECTO: '.strtoupper($proyecto->nombre));
+        $sheet->setCellValue('A3', 'CLIENTE: '.($proyecto->cliente ?: '-').'  ·  UBICACION: '.($proyecto->ubicacion ?: '-'));
+
+        $sheet->setCellValue('A5', 'AVANCE FINANCIERO');
+        $sheet->setCellValue('B5', $resumen['avance_financiero']);
+        $sheet->getStyle('A5')->getFont()->setBold(true);
+        $sheet->getStyle('B5')->getNumberFormat()->setFormatCode('0.00"%"');
+        $sheet->setCellValue('D5', 'AVANCE FISICO');
+        $sheet->setCellValue('E5', $resumen['avance_fisico'] === null ? 'Unidades mixtas' : $resumen['avance_fisico']);
+        $sheet->getStyle('D5')->getFont()->setBold(true);
+        if ($resumen['avance_fisico'] !== null) {
+            $sheet->getStyle('E5')->getNumberFormat()->setFormatCode('0.00"%"');
+        }
+        $sheet->setCellValue('G5', 'ITEMS TERMINADOS');
+        $sheet->setCellValue('H5', $resumen['items_terminados'].' de '.$resumen['items']);
+        $sheet->getStyle('G5')->getFont()->setBold(true);
+
+        $sheet->setCellValue('A6', 'VALOR PLAN (COSTO DIRECTO)');
+        $sheet->setCellValue('B6', $resumen['plan']);
+        $sheet->getStyle('A6')->getFont()->setBold(true);
+        $sheet->getStyle('B6')->getNumberFormat()->setFormatCode(self::MONEDA2);
+
+        $sheet->setCellValue('A7', 'VALOR EJECUTADO (VALOR GANADO)');
+        $sheet->setCellValue('B7', $resumen['ejecutado']);
+        $sheet->getStyle('A7')->getFont()->setBold(true);
+        $sheet->getStyle('B7')->getNumberFormat()->setFormatCode(self::MONEDA2);
+
+        $this->encabezados($sheet, 9, ['ETAPA', 'CAPITULOS', 'ITEMS', 'VALOR PLAN', 'VALOR EJECUTADO', 'AVANCE FINANCIERO', 'AVANCE FISICO', 'UNIDAD']);
+
+        $fila = 10;
+        foreach ($avance['etapas'] as $etapa) {
+            $sheet->setCellValue("A{$fila}", $etapa['nombre']);
+            $sheet->setCellValue("B{$fila}", $etapa['capitulos']);
+            $sheet->setCellValue("C{$fila}", $etapa['items']);
+            $sheet->setCellValue("D{$fila}", $etapa['plan']);
+            $sheet->setCellValue("E{$fila}", $etapa['ejecutado']);
+            $sheet->setCellValue("F{$fila}", $etapa['avance_financiero']);
+            $sheet->setCellValue("G{$fila}", $etapa['avance_fisico'] === null ? '—' : $etapa['avance_fisico']);
+            $sheet->setCellValue("H{$fila}", $etapa['unidad_fisica'] ?: 'Mixta');
+            $this->estiloFila($sheet, $fila, 'A9:H9');
+            $fila++;
+        }
+
+        $this->bordes($sheet, "A9:H{$fila}");
+        $this->money($sheet, "D10:E{$fila}", self::MONEDA2);
+        $sheet->getStyle("F10:F{$fila}")->getNumberFormat()->setFormatCode('0.00"%"');
+        $sheet->getStyle("G10:G{$fila}")->getNumberFormat()->setFormatCode('0.00"%"');
+
+        $fila += 2;
+        $this->encabezados($sheet, $fila, ['ETAPA', 'CAPITULO', 'ITEM', 'VALOR PLAN', 'VALOR EJECUTADO', 'AVANCE FINANCIERO', 'AVANCE FISICO', 'UNIDAD']);
+        $fila++;
+
+        $nombresEtapa = collect($avance['etapas'])->mapWithKeys(fn (array $etapa): array => [
+            ($etapa['id'] ?? 'sin') => $etapa['nombre'],
+        ]);
+
+        $inicioCapitulos = $fila;
+        foreach ($avance['capitulos'] as $capitulo) {
+            $nombreEtapa = $nombresEtapa->get($capitulo['etapa_id'] ?? 'sin', 'Sin etapa');
+            $sheet->setCellValue("A{$fila}", $nombreEtapa);
+            $sheet->setCellValue("B{$fila}", $capitulo['nombre']);
+            $sheet->setCellValue("C{$fila}", $capitulo['item']);
+            $sheet->setCellValue("D{$fila}", $capitulo['plan']);
+            $sheet->setCellValue("E{$fila}", $capitulo['ejecutado']);
+            $sheet->setCellValue("F{$fila}", $capitulo['avance_financiero']);
+            $sheet->setCellValue("G{$fila}", $capitulo['avance_fisico'] === null ? '—' : $capitulo['avance_fisico']);
+            $sheet->setCellValue("H{$fila}", $capitulo['unidad_fisica'] ?: 'Mixta');
+            $this->estiloFila($sheet, $fila, 'A9:H9');
+            $fila++;
+        }
+
+        if ($inicioCapitulos < $fila) {
+            $this->bordes($sheet, "A{$inicioCapitulos}:H".($fila - 1));
+            $this->money($sheet, "D{$inicioCapitulos}:E".($fila - 1), self::MONEDA2);
+            $sheet->getStyle("F{$inicioCapitulos}:F".($fila - 1))->getNumberFormat()->setFormatCode('0.00"%"');
+            $sheet->getStyle("G{$inicioCapitulos}:G".($fila - 1))->getNumberFormat()->setFormatCode('0.00"%"');
+        }
+
+        $this->anchuras($sheet, ['A' => 30, 'B' => 42, 'C' => 10, 'D' => 18, 'E' => 19, 'F' => 18, 'G' => 16, 'H' => 11]);
     }
 
     private function hojaTablaDeTareas(Spreadsheet $spreadsheet, Proyecto $proyecto): void
@@ -515,6 +658,9 @@ class ExcelExportService
         $sheet->getStyle("E{$fila}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
         $sheet->getStyle("F{$fila}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
         $sheet->getStyle("G{$fila}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        $sheet->getStyle("H{$fila}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        $sheet->getStyle("I{$fila}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        $sheet->getStyle("J{$fila}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
         $sheet->getStyle("B{$fila}")->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
     }
 

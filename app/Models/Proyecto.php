@@ -26,6 +26,7 @@ class Proyecto extends Model
         'pct_administracion',
         'pct_imprevistos',
         'pct_utilidad',
+        'pct_iva_utilidad',
     ];
 
     protected $attributes = [
@@ -33,6 +34,7 @@ class Proyecto extends Model
         'pct_administracion' => 10,
         'pct_imprevistos' => 5,
         'pct_utilidad' => 10,
+        'pct_iva_utilidad' => 0,
     ];
 
     protected function casts(): array
@@ -41,6 +43,7 @@ class Proyecto extends Model
             'pct_administracion' => 'float',
             'pct_imprevistos' => 'float',
             'pct_utilidad' => 'float',
+            'pct_iva_utilidad' => 'float',
         ];
     }
 
@@ -52,5 +55,10 @@ class Proyecto extends Model
     public function items(): HasMany
     {
         return $this->hasMany(ProyectoApu::class)->orderBy('orden');
+    }
+
+    public function etapas(): HasMany
+    {
+        return $this->hasMany(ProyectoEtapa::class)->orderBy('orden');
     }
 }

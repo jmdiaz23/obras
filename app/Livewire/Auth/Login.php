@@ -61,7 +61,11 @@ class Login extends Component
 
         session()->regenerate();
 
-        $this->redirectIntended(route('dashboard'), navigate: true);
+        $destino = Auth::user()->esSuperAdmin()
+            ? route('admin.dashboard')
+            : route('dashboard');
+
+        $this->redirectIntended($destino, navigate: true);
     }
 
     public function render()

@@ -1,0 +1,12 @@
+@props(['class' => 'h-10 w-10'])
+
+<svg {{ $attributes->merge([
+    'class' => $class,
+    'viewBox' => '0 0 64 64',
+    'fill' => 'none',
+    'aria-hidden' => 'true',
+]) }}>
+    <rect width="64" height="64" rx="16" fill="#0f172a"/>
+    <rect x="12" y="12" width="40" height="40" rx="13" stroke="#fbbf24" stroke-width="8"/>
+    <path d="M24 36l8-8 8 8" stroke="#f8fafc" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

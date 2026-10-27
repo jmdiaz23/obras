@@ -189,6 +189,7 @@ class CatalogosTest extends TestCase
             ->set('form.descripcion', 'Vibrocompactador manual')
             ->set('form.tipo', 'Rana')
             ->set('form.tarifa_dia', '39900')
+            ->set('form.unidad_alquiler', 'dia')
             ->call('guardar')
             ->assertHasNoErrors();
 
@@ -196,6 +197,7 @@ class CatalogosTest extends TestCase
             'empresa_id' => $this->empresa->id,
             'codigo' => 'E1',
             'tarifa_dia' => 39900,
+            'unidad_alquiler' => 'dia',
         ]);
     }
 

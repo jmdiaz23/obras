@@ -12,8 +12,11 @@ class ApuCalculator
      * A. MATERIALES  : total = cantidad * (1 + desperdicio%) * precio_lista
      * B. MANO DE OBRA: jornal+prest = jornal * (1 + prest%)
      *                  total       = jornal+prest * dias_por_unidad
-     * C. EQUIPOS     : tarifa_hora = tarifa_dia / 8
-     *                  total       = tarifa_hora * horas_por_unidad
+     * C. EQUIPOS     : según la unidad de alquiler de la línea:
+     *                    hr  -> valor_unitario = tarifa_dia / 8
+     *                    dia -> valor_unitario = tarifa_dia
+     *                    m2/m3/und -> valor_unitario definido en la línea
+     *                  total = valor_unitario * cantidad
      *   Herramientas : total_mo * pct_herramientas%
      *
      * COSTO DIRECTO = A + B + C(incl. herramientas)
@@ -56,15 +59,23 @@ class ApuCalculator
         });
 
         $equipos = $apu->equipos->map(function ($linea) {
-            $tarifaHora = ($linea->equipo?->tarifa_dia ?? 0) / 8;
+            $unidad = $linea->unidad ?: 'hr';
+            $tarifaDia = (float) ($linea->equipo?->tarifa_dia ?? 0);
+
+            $valorUnitario = match ($unidad) {
+                'hr' => $tarifaDia / 8,
+                'dia' => $tarifaDia,
+                default => (float) ($linea->valor_unitario ?? 0),
+            };
 
             return [
                 'id' => $linea->id,
                 'referencia' => $linea->equipo,
                 'descripcion' => $linea->equipo?->descripcion ?? '[equipo eliminado]',
-                'tarifa_hora' => $tarifaHora,
-                'horas_por_unidad' => $linea->horas_por_unidad,
-                'total' => $tarifaHora * $linea->horas_por_unidad,
+                'unidad' => $unidad,
+                'cantidad' => $linea->cantidad,
+                'valor_unitario' => $valorUnitario,
+                'total' => $valorUnitario * $linea->cantidad,
             ];
         });
 
