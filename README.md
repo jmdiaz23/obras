@@ -207,6 +207,7 @@ APP_URL=http://obras.test
 APP_LOCALE=es
 APP_FALLBACK_LOCALE=es
 APP_FAKER_LOCALE=es_CO
+APP_TIMEZONE=America/Bogota
 
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
@@ -519,11 +520,17 @@ El `docker-compose.yml` incluido sirve para demo y desarrollo. Para un servidor:
 ```dotenv
 OBRAOS_APP_ENV=production
 OBRAOS_APP_DEBUG=false
-OBRAOS_APP_PORT=80
+OBRAOS_APP_PORT=8090
+OBRAOS_APP_URL=https://obras.tudominio.com
+OBRAOS_APP_KEY=base64:<clave-fija-de-32-bytes>
 OBRAOS_DB_PASSWORD=<contraseña-fuerte>
 OBRAOS_DB_ROOT_PASSWORD=<contraseña-fuerte>
 OBRAOS_SEED_DEMO=false
 ```
+
+> `OBRAOS_APP_KEY` debe fijarse **una sola vez** (por ejemplo `base64:` + `openssl rand -base64 32`). Si se deja vacía, el contenedor genera una clave nueva en cada recreación y se invalidan las sesiones y los datos cifrados.
+>
+> La zona horaria se controla con `APP_TIMEZONE` (por defecto `America/Bogota`). El contenedor toma este valor de `.env.docker.example`.
 
 3. Levanta los servicios:
 
@@ -531,11 +538,13 @@ OBRAOS_SEED_DEMO=false
 docker compose up -d --build
 ```
 
-4. Coloca un proxy inverso con HTTPS (Nginx, Caddy o Traefik) delante del puerto de la aplicación.
+4. Coloca un proxy inverso con HTTPS (Nginx, Caddy o Traefik) delante del puerto de la aplicación. `bootstrap/app.php` ya confía en `127.0.0.1`, `::1` y la red Docker (`172.16.0.0/12`) para leer `X-Forwarded-Proto` y la IP real del cliente.
 
 ### Checklist de producción
 
 - [ ] `APP_ENV=production` y `APP_DEBUG=false`.
+- [ ] `APP_KEY` fija y estable entre despliegues.
+- [ ] `APP_TIMEZONE=America/Bogota` (o la zona del cliente).
 - [ ] Contraseñas fuertes y respaldos de la base (`docker compose exec db mysqldump -uobras -p obras > respaldo.sql`).
 - [ ] HTTPS obligatorio.
 - [ ] `APP_URL` con el dominio real.

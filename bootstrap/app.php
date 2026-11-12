@@ -13,6 +13,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Nginx/1Panel hace proxy desde localhost o desde la red Docker.
+        // Sin esto, Laravel no ve X-Forwarded-Proto=https ni la IP real.
+        $middleware->trustProxies(at: ['127.0.0.1', '::1', '172.16.0.0/12']);
+
         $middleware->redirectGuestsTo(fn () => route('login'));
         $middleware->redirectUsersTo(fn () => auth()->user()?->esSuperAdmin()
             ? route('admin.dashboard')
